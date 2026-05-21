@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>陀螺仪485实时采集</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: "Microsoft YaHei", sans-serif;
+    }
+    body {
+      background: #0f111a;
+      color: #e0e0e0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .title {
+      font-size: 24px;
+      color: #0ef;
+      font-weight: bold;
+    }
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #ff4444;
+    }
+    .dot.active {
+      background: #00ff44;
+      animation: pulse 1s infinite;
+    }
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.5; }
+      100% { opacity: 1; }
+    }
+    .btn {
+      padding: 8px 16px;
+      background: #0ef;
+      color: #000;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .btn:disabled {
+      background: #444;
+      cursor: not-allowed;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+    .card {
+      background: #1a1c2b;
+      border-radius: 8px;
+      padding: 16px;
+      border: 1px solid #333;
+    }
+    .card-title {
+      font-size: 18px;
+      color: #0ef;
+      margin-bottom: 12px;
+    }
+    .data-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .data-item {
+      background: #252836;
+      padding: 12px;
+      border-radius: 6px;
+    }
+    .label {
+      font-size: 12px;
+      color: #aaa;
+    }
+    .value {
+      font-size: 20px;
+      font-weight: bold;
+      color: #fff;
+    }
+    .chart-box {
+      height: 360px;
+      position: relative;
+    }
+    .log-window {
+      background: #000;
+      color: #0f0;
+      font-family: monospace;
+      font-size: 12px;
+      padding: 10px;
+      border-radius: 6px;
+      height: 180px;
+      overflow-y: auto;
+    }
+    .log-line { margin: 2px 0; }
+    .log-send { color: #0ef; }
+    .log-recv { color: #0f0; }
+    .log-error { color: #f44; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="title">陀螺仪485实时采集</div>
+    <div class="status">
+      <div id="statusDot" class="dot"></div>
+      <span id="statusText">未连接</span>
+      <button id="connectBtn" class="btn">连接485串口</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">陀螺仪实时数据</div>
+    <div class="data-row">
+      <div class="data-item"><div class="label">X轴加速度 (G)</div><div id="accX" class="value">0.0000</div></div>
+      <div class="data-item"><div class="label">Y轴加速度 (G)</div><div id="accY" class="value">0.0000</div></div>
+      <div class="data-item"><div class="label">Z轴加速度 (G)</div><div id="accZ" class="value">0.0000</div></div>
+    </div>
+    <div class="data-row">
+      <div class="data-item"><div class="label">横滚角 Roll (°)</div><div id="roll" class="value">0.000</div></div>
+      <div class="data-item"><div class="label">俯仰角 Pitch (°)</div><div id="pitch" class="value">0.000</div></div>
+      <div class="data-item"><div class="label">偏航角 Yaw (°)</div><div id="yaw" class="value">0.000</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">加速度实时曲线 (±16g)</div>
+    <div class="chart-box"><canvas id="accelChart"></canvas></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">通信日志</div>
+    <div id="logWindow" class="log-window"></div>
+  </div>
+</div>
+
+<script>
+let port, reader, writer, isConnected = false;
+let pollInterval;
+const maxPoints = 100;
+
+let chartData = {
+  labels: Array(maxPoints).fill(''),
+  datasets: [
+    { label: 'X轴', data: Array(maxPoints).fill(0), borderColor: '#0ef', borderWidth: 2 },
+    { label: 'Y轴', data: Array(maxPoints).fill(0), borderColor: '#f0e', borderWidth: 2 },
+    { label: 'Z轴', data: Array(maxPoints).fill(0), borderColor: '#ff0', borderWidth: 2 }
+  ]
+};
+
+const ctx = document.getElementById('accelChart').getContext('2d');
+const accelChart = new Chart(ctx, {
+  type: 'line', data: chartData, options: {
+    responsive: true, maintainAspectRatio: false, animation: false,
+    scales: { y: { min: -4, max: 4 }, x: { display: false } }
+  }
+});
+
+const logWindow = document.getElementById('logWindow');
+function addLog(type, msg) {
+  const time = new Date().toLocaleTimeString();
+  const line = document.createElement('div');
+  line.className = 'log-line log-' + type;
+  line.textContent = `[${time}] ${msg}`;
+  logWindow.appendChild(line);
+  logWindow.scrollTop = logWindow.scrollHeight;
+}
+
+function updateUI(roll, pitch, yaw, accX, accY, accZ) {
+  document.getElementById('accX').innerText = accX.toFixed(4);
+  document.getElementById('accY').innerText = accY.toFixed(4);
+  document.getElementById('accZ').innerText = accZ.toFixed(4);
+  document.getElementById('roll').innerText = roll.toFixed(3);
+  document.getElementById('pitch').innerText = pitch.toFixed(3);
+  document.getElementById('yaw').innerText = yaw.toFixed(3);
+
+  chartData.datasets[0].data.push(Math.max(-16, Math.min(16, accX)));
+  chartData.datasets[1].data.push(Math.max(-16, Math.min(16, accY)));
+  chartData.datasets[2].data.push(Math.max(-16, Math.min(16, accZ)));
+  chartData.datasets.forEach(d => d.data.shift());
+  accelChart.update();
+}
+
+// 大端浮点数解析
+function bytesToFloat(b1,b2,b3,b4) {
+  const buf = new ArrayBuffer(4);
+  const view = new DataView(buf);
+  view.setUint8(0,b1); view.setUint8(1,b2); view.setUint8(2,b3); view.setUint8(3,b4);
+  return view.getFloat32(0, false);
+}
+
+// 连接串口
+document.getElementById('connectBtn').onclick = async () => {
+  if (!isConnected) {
+    try {
+      port = await navigator.serial.requestPort();
+      // ✅✅✅ 这里已经改成 115200 波特率 ✅✅✅
+      await port.open({ baudRate: 115200, dataBits: 8, stopBits: 1, parity: "none" });
+      
+      isConnected = true;
+      document.getElementById('statusDot').classList.add('active');
+      document.getElementById('statusText').innerText = "已连接";
+      document.getElementById('connectBtn').innerText = "断开连接";
+
+      writer = port.writable.getWriter();
+      reader = port.readable.getReader();
+      readLoop();
+
+      // 1秒发一次指令
+      pollInterval = setInterval(() => {
+        const cmd = new Uint8Array([0x08,0x03,0x00,0x00,0x00,0x0C,0x45,0x56]);
+        writer.write(cmd);
+        addLog('send', `下发: ${Array.from(cmd).map(b=>b.toString(16).padStart(2,'0')).join(' ')}`);
+      }, 1000);
+
+    } catch(e) { addLog('error', '连接失败：'+e.message); }
+  } else {
+    isConnected = false;
+    clearInterval(pollInterval);
+    reader.releaseLock(); port.close();
+    document.getElementById('statusDot').classList.remove('active');
+    document.getElementById('statusText').innerText = "未连接";
+    document.getElementById('connectBtn').innerText = "连接485串口";
+  }
+};
+
+// 接收解析
+async function readLoop() {
+  let buffer = new Uint8Array();
+  while (isConnected) {
+    try {
+      const { value, done } = await reader.read();
+      if (done) break;
+      addLog('recv', `接收原始: ${Array.from(value).map(b=>b.toString(16).padStart(2,'0')).join(' ')}`);
+
+      let temp = new Uint8Array(buffer.length + value.length);
+      temp.set(buffer); temp.set(value, buffer.length);
+      buffer = temp;
+
+      while (buffer.length >= 29) {
+        if (buffer[0]===0x08 && buffer[1]===0x03 && buffer[2]===0x18) {
+          const f = buffer.slice(0,29); buffer = buffer.slice(29);
+          let o = 3;
+          const roll  = bytesToFloat(f[o++],f[o++],f[o++],f[o++]);
+          const pitch = bytesToFloat(f[o++],f[o++],f[o++],f[o++]);
+          const yaw   = bytesToFloat(f[o++],f[o++],f[o++],f[o++]);
+          const accX  = bytesToFloat(f[o++],f[o++],f[o++],f[o++]);
+          const accY  = bytesToFloat(f[o++],f[o++],f[o++],f[o++]);
+          const accZ  = bytesToFloat(f[o++],f[o++],f[o++],f[o++]);
+          
+          addLog('recv', `解析 Roll:${roll.toFixed(2)} Pitch:${pitch.toFixed(2)} Yaw:${yaw.toFixed(2)} | X:${accX.toFixed(3)} Y:${accY.toFixed(3)} Z:${accZ.toFixed(3)}`);
+          updateUI(roll,pitch,yaw,accX,accY,accZ);
+        } else buffer = buffer.slice(1);
+      }
+    } catch(e) { addLog('error','读取异常'); break; }
+  }
+}
+</script>
+</body>
+</html>
