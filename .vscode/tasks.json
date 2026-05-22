@@ -1,0 +1,27 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "构建桥梁模型箱采集上位机",
+            "type": "shell",
+            "command": "${workspaceFolder}\\build.bat",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "problemMatcher": [],
+            "icon": {
+                "id": "rocket",
+                "tooltip": "一键构建桥梁模型箱采集上位机"
+            }
+        }
+    ]
+}

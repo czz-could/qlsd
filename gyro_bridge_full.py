@@ -7,6 +7,7 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 import pyqtgraph as pg
+import threading
 
 # ===================== CRC16 校验（修正字节序，与Modbus RTU完全一致） =====================
 def crc16_modbus(data):
@@ -105,6 +106,7 @@ def hex_str(buf):
 class SerialWorker(QThread):
     sig_data = pyqtSignal(object, int)
     sig_log  = pyqtSignal(str, bool)
+    sig_cmd_result = pyqtSignal(bytes, bool, bytes)
 
     def __init__(self, port, baud, cmd, dev_id):
         super().__init__()
@@ -114,6 +116,7 @@ class SerialWorker(QThread):
         self.dev_id = dev_id
         self.running = True
         self.ser = None
+        self.ser_lock = threading.Lock()
 
     def run(self):
         try:
@@ -127,8 +130,12 @@ class SerialWorker(QThread):
             if not self.ser or not self.ser.is_open:
                 break
             try:
-                self.ser.write(self.cmd)
-                buf = self.ser.read(200)
+                with self.ser_lock:
+                    self.ser.write(self.cmd)
+                    buf = self.ser.read(200)
+                if len(buf) > 0:
+                    # 在通信日志中打印收到的原始字节（十六进制）
+                    self.sig_log.emit(f"📥 收到帧: {hex_str(buf)}", False)
 
                 if len(buf) < 8:
                     self.sig_log.emit(f"⚠️ 数据过短，丢弃", True)
@@ -176,7 +183,7 @@ class SerialWorker(QThread):
         d["wind_gear"]   = (buf[off]<<8)|buf[off+1]; off +=2
         d["wind_angle"]  = (buf[off]<<8)|buf[off+1]; off +=2
         d["humidity"]    = ((buf[off]<<8)|buf[off+1])/10.0; off +=2
-        d["temp"]        = decode_int16((buf[off]<<8)|buf[off+1]); off +=2
+        d["temp"]        = decode_int16((buf[off]<<8)|buf[off+1])/10.0; off +=2
         d["noise"]       = ((buf[off]<<8)|buf[off+1])/10.0; off +=2
         d["pm25"]        = (buf[off]<<8)|buf[off+1]; off +=2
         d["pm10"]        = (buf[off]<<8)|buf[off+1]; off +=2
@@ -201,6 +208,47 @@ class SerialWorker(QThread):
         if self.ser and self.ser.is_open:
             self.ser.write(data)
 
+    def send_with_retry(self, data, attempts=5, delay=0.1):
+        """
+        发送并重试：每次写入后读取与发送帧等长的应答，若应答与发送帧完全相同则视为成功。
+        该函数可在任意线程调用；对串口访问使用 ser_lock 保护。
+        最终通过 sig_cmd_result 发回结果（data, bool, resp_bytes）。
+        """
+        result = False
+        last_resp = b''
+        if not (self.ser and self.ser.is_open):
+            self.sig_log.emit("❌ 串口未打开，无法发送命令", True)
+            self.sig_cmd_result.emit(data, False, last_resp)
+            return False
+
+        for i in range(1, attempts + 1):
+            try:
+                with self.ser_lock:
+                    self.ser.write(data)
+                    self.sig_log.emit(f"📤 发送第{i}次: {hex_str(data)}", False)
+                    resp = self.ser.read(len(data))
+                last_resp = resp
+                if resp == data:
+                    self.sig_log.emit(f"✅ 收到应答（匹配）: {hex_str(resp)}", False)
+                    result = True
+                    break
+                else:
+                    self.sig_log.emit(f"⚠️ 收到应答: {hex_str(resp)} 与 发送帧不匹配", True)
+            except Exception as e:
+                self.sig_log.emit(f"❌ 发送异常：{str(e)}", True)
+            time.sleep(delay)
+
+        if not result:
+            self.sig_log.emit(f"❌ 重试{attempts}次均失败: {hex_str(data)}", True)
+
+        self.sig_cmd_result.emit(data, result, last_resp)
+        return result
+
+    def send_with_retry_async(self, data, attempts=5, delay=0.1):
+        """在独立线程中执行 send_with_retry，避免阻塞调用线程（通常是主线程）。"""
+        t = threading.Thread(target=self.send_with_retry, args=(data, attempts, delay), daemon=True)
+        t.start()
+
     def stop(self):
         self.running = False
 
@@ -219,6 +267,7 @@ class MainWindow(QMainWindow):
         self.alarm_timer.timeout.connect(self.close_alarm_auto)
         self.alarm_on_flag = False
         self.last_z = [0.0]*8
+        self._active_msgboxes = []
 
         self.selected_gyro = 0
         self.max_points = 100
@@ -397,6 +446,7 @@ class MainWindow(QMainWindow):
             self.worker_main = SerialWorker(p,b,CMD_MAIN,0)
             self.worker_main.sig_data.connect(self.up_main)
             self.worker_main.sig_log.connect(self.log)
+            self.worker_main.sig_cmd_result.connect(self.on_cmd_result)
             self.worker_main.start()
             self.btn_conn1.setText("断开"); self.btn_conn1.setStyleSheet("background:#ef4444")
         else:
@@ -456,31 +506,90 @@ class MainWindow(QMainWindow):
 
     def trigger_alarm(self):
         if self.worker_main:
-            self.worker_main.send_cmd(ALARM_ON)
-            self.alarm_on_flag = True
-            self.log("⚠️ Z轴突变 > 0.1G → 声光报警开启",True)
-            self.alarm_timer.start()
+            # 发起异步请求，等待 on_cmd_result 处理结果回调
+            self.worker_main.send_with_retry_async(ALARM_ON, attempts=5, delay=0.1)
+            self.log("⚠️ Z轴突变 > 0.1G → 请求开启声光报警（异步）", True)
 
     def close_alarm_auto(self):
         if self.worker_main:
-            self.worker_main.send_cmd(ALARM_OFF)
-        self.alarm_on_flag = False
-        self.alarm_timer.stop()
-        self.log("✅ 声光报警已自动关闭")
+            self.worker_main.send_with_retry_async(ALARM_OFF, attempts=5, delay=0.1)
+            self.log("ℹ️ 请求关闭声光报警（异步）", False)
 
     def send_motor_on(self):
         if self.worker_main:
-            self.worker_main.send_cmd(MOTOR_ON)
+            # 发起异步请求，等待 on_cmd_result 处理结果回调
+            # 暂时禁用启动按钮以防重复点击
             self.btn_motor_start.setEnabled(False)
-            self.btn_motor_stop.setEnabled(True)
-            self.log("📤 振动电机 → 启动")
+            self.worker_main.send_with_retry_async(MOTOR_ON, attempts=5, delay=0.1)
+            self.log("📤 请求启动振动电机（异步）")
 
     def send_motor_off(self):
         if self.worker_main:
-            self.worker_main.send_cmd(MOTOR_OFF)
+            # 暂时禁用关闭按钮以防重复点击
             self.btn_motor_stop.setEnabled(False)
-            self.btn_motor_start.setEnabled(True)
-            self.log("📤 振动电机 → 关闭")
+            self.worker_main.send_with_retry_async(MOTOR_OFF, attempts=5, delay=0.1)
+            self.log("📤 请求关闭振动电机（异步）")
+
+    def on_cmd_result(self, data, ok, resp):
+        """
+        处理串口命令异步结果：根据命令和成功/失败状态更新界面或弹窗。
+        使用非模态、主线程显示的对话框以避免阻塞。
+        同时在通信日志打印收到的应答帧（十六进制）。
+        """
+        if resp:
+            self.log(f"📥 控制应答: {hex_str(resp)}")
+        if data == MOTOR_ON:
+            if ok:
+                self.btn_motor_start.setEnabled(False)
+                self.btn_motor_stop.setEnabled(True)
+                self.log("📤 振动电机 → 启动（确认）")
+            else:
+                self.btn_motor_start.setEnabled(True)
+                self.log("❌ 振动电机 控制失败", True)
+                self.show_alert("控制失败", "振动电机控制失败，请联系管理人员处理")
+        elif data == MOTOR_OFF:
+            if ok:
+                self.btn_motor_stop.setEnabled(False)
+                self.btn_motor_start.setEnabled(True)
+                self.log("📤 振动电机 → 关闭（确认）")
+            else:
+                self.btn_motor_stop.setEnabled(True)
+                self.log("❌ 振动电机 关闭失败", True)
+                self.show_alert("控制失败", "振动电机控制失败，请联系管理人员处理")
+        elif data == ALARM_ON:
+            if ok:
+                self.alarm_on_flag = True
+                self.alarm_timer.start()
+                self.log("⚠️ 声光报警 → 已确认开启", True)
+            else:
+                self.log("❌ 声光警报开启失败", True)
+                self.show_alert("控制失败", "声光警报控制失败，请联系管理人员处理")
+        elif data == ALARM_OFF:
+            if ok:
+                self.alarm_on_flag = False
+                self.alarm_timer.stop()
+                self.log("✅ 声光报警已自动关闭")
+            else:
+                self.log("❌ 声光警报关闭失败", True)
+                self.show_alert("控制失败", "声光警报控制失败，请联系管理人员处理")
+
+    def show_alert(self, title, text):
+        """在主线程以非模态方式显示错误提示，避免阻塞事件循环。"""
+        mb = QMessageBox(self)
+        mb.setIcon(QMessageBox.Critical)
+        mb.setWindowTitle(title)
+        mb.setText(text)
+        mb.setStandardButtons(QMessageBox.Ok)
+        mb.setModal(False)
+        mb.show()
+        # 保持引用防止被回收
+        self._active_msgboxes.append(mb)
+        def _on_finished():
+            try:
+                self._active_msgboxes.remove(mb)
+            except ValueError:
+                pass
+        mb.finished.connect(_on_finished)
 
     def log(self, msg, err=False):
         t = time.strftime("%H:%M:%S")

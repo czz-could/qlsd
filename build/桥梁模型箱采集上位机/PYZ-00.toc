@@ -1,4 +1,4 @@
-('E:\\CZZ\\GD_qlsd\\guangda-university-model-box\\czz\\build\\桥梁模型箱采集上位机\\PYZ-00.pyz',
+('E:\\CZZ\\GD_qlsd\\czz\\build\\桥梁模型箱采集上位机\\PYZ-00.pyz',
  [('PyQt5',
    'D:\\SoftWare\\python3-10-11\\lib\\site-packages\\PyQt5\\__init__.py',
    'PYMODULE'),
