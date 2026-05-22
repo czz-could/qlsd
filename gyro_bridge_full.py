@@ -46,49 +46,103 @@ QWidget{background-color: #071f3a;}
 QScrollArea{background-color: transparent;}
 QFrame{background-color: transparent;}
 QMainWindow{background-color: #071f3a;}
-QGroupBox{color: #E6F2FF;font-size:14px;font-weight:bold;background-color:#081827;border:1px solid #184e85;border-radius:8px;margin-top:12px;padding-top:15px;}
-QGroupBox::title{subcontrol-origin: margin;left:15px;top:5px;}
-QLabel{color:#C9E6FF;font-size:13px;}
-QPushButton{background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #0EA5E9, stop:1 #0284C7);color:#FFFFFF;border:none;border-radius:6px;padding:8px 20px;font-size:13px;}
-QPushButton:hover{background-color:#0b79b0;}
-QPushButton:disabled{background-color:#143444;color:#6b7f8e;}
-QComboBox{background-color:#042b40;color:#E6F2FF;border:1px solid #184e85;border-radius:6px;padding:6px 10px;}
-QComboBox QAbstractItemView{background-color:#042b40;color:#E6F2FF;selection-background-color:#0EA5E9;}
-QTextEdit{background-color:#022233;color:#BEEAF7;font-family:Consolas;font-size:12px;border:1px solid #184e85;border-radius:6px;}
-QMessageBox{
-    background-color: #071f3a !important;
-    border: 2px solid #0ea5e9 !important;
-    border-radius: 10px !important;
+
+/* 科幻风格GroupBox - 增强边框和发光效果 */
+QGroupBox{
+    color: #E6F2FF;
+    font-size:14px;
+    font-weight:bold;
+    background-color:#081827;
+    border: 2px solid #0ea5e9;
+    border-radius:12px;
+    margin-top:16px;
+    padding-top:18px;
+    box-shadow: 0 0 15px rgba(14, 165, 233, 0.3);
 }
-QMessageBox QLabel{
-    color: #ffffff !important;
-    font-size: 14px !important;
-    background-color: transparent !important;
+QGroupBox::title{
+    subcontrol-origin: margin;
+    left:20px;
+    top:8px;
+    color: #60a5fa;
+    text-shadow: 0 0 10px rgba(96, 165, 250, 0.7);
 }
-QMessageBox QPushButton{
-    background-color: #0ea5e9 !important;
-    color: #ffffff !important;
-    border: none !important;
-    border-radius: 5px !important;
-    padding: 8px 20px !important;
-    font-size: 13px !important;
-    min-width: 80px !important;
+
+/* 科幻风格标签 */
+QLabel{
+    color:#C9E6FF;
+    font-size:13px;
+    text-shadow: 0 0 5px rgba(201, 230, 255, 0.5);
 }
-QMessageBox QPushButton:hover{
-    background-color: #0a85d6 !important;
+
+/* 科幻游戏风格按钮 - 增强发光和动画效果 */
+QPushButton{
+    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #0EA5E9, stop:1 #0284C7);
+    color:#FFFFFF;
+    border: 2px solid #3b82f6;
+    border-radius:8px;
+    padding:10px 24px;
+    font-size:14px;
+    font-weight:bold;
+    box-shadow: 0 0 12px rgba(14, 165, 233, 0.4);
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
 }
+QPushButton:hover{
+    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #3b82f6, stop:1 #0b79b0);
+    border: 2px solid #60a5fa;
+    box-shadow: 0 0 20px rgba(96, 165, 250, 0.6);
+}
+QPushButton:disabled{
+    background-color:#143444;
+    color:#6b7f8e;
+    border: 2px solid #2d4a5d;
+    box-shadow: none;
+}
+
+/* 科幻风格下拉框 */
+QComboBox{
+    background-color:#042b40;
+    color:#E6F2FF;
+    border: 2px solid #184e85;
+    border-radius:8px;
+    padding:8px 12px;
+    font-size:13px;
+    box-shadow: 0 0 8px rgba(24, 78, 133, 0.3);
+}
+QComboBox QAbstractItemView{
+    background-color:#042b40;
+    color:#E6F2FF;
+    selection-background-color:#0EA5E9;
+    border: 2px solid #184e85;
+    border-radius:8px;
+}
+
+/* 科幻风格文本编辑器 - 终端效果 */
+QTextEdit{
+    background-color:#022233;
+    color:#BEEAF7;
+    font-family: 'Courier New', Consolas, monospace;
+    font-size:12px;
+    border: 2px solid #184e85;
+    border-radius:8px;
+    box-shadow: inset 0 0 10px rgba(24, 78, 133, 0.4);
+}
+
+/* 弹窗样式已在show_alert中定义，保持原样 */
 """
 
 DATA_LABEL_STYLE = """
 QLabel{
     background-color:#02293c;
     color:#7FE8FF;
-    font-size:15px;
+    font-size:16px;
     font-weight:bold;
-    padding:6px 4px;
-    border:1px solid #184e85;
-    border-radius:6px;
-    min-width:110px;
+    padding:8px 6px;
+    border: 2px solid #184e85;
+    border-radius:8px;
+    min-width:120px;
+    text-align:center;
+    box-shadow: 0 0 10px rgba(127, 232, 255, 0.3);
+    text-shadow: 0 0 6px rgba(127, 232, 255, 0.7);
 }
 """
 
@@ -96,24 +150,33 @@ GYRO_CLICK_STYLE = """
 QLabel{
     background-color:#02293c;
     color:#7FE8FF;
-    font-size:15px;
+    font-size:16px;
     font-weight:bold;
-    padding:6px 4px;
-    border:1px solid #184e85;
-    border-radius:6px;
+    padding:8px 6px;
+    border: 2px solid #184e85;
+    border-radius:8px;
+    box-shadow: 0 0 8px rgba(127, 232, 255, 0.2);
+    text-shadow: 0 0 4px rgba(127, 232, 255, 0.5);
 }
-QLabel:hover{background-color:#0b486b;border:1px solid #60a5fa;}
+QLabel:hover{
+    background-color:#0b486b;
+    border: 2px solid #60a5fa;
+    box-shadow: 0 0 15px rgba(96, 165, 250, 0.5);
+    transform: scale(1.05);
+}
 """
 
 SELECTED_GYRO_STYLE = """
 QLabel{
     background-color:#1e3a8a;
     color:white;
-    font-size:15px;
+    font-size:16px;
     font-weight:bold;
-    padding:6px 4px;
-    border:1px solid #3b82f6;
-    border-radius:6px;
+    padding:8px 6px;
+    border: 2px solid #3b82f6;
+    border-radius:8px;
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.6);
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
 }
 """
 
@@ -428,17 +491,23 @@ class MainWindow(QMainWindow):
         plot_box = QGroupBox("陀螺仪X/Y/Z加速度实时曲线")
         self.plot = pg.PlotWidget()
         self.plot.setBackground("#071f3a")
-        self.plot.showGrid(x=True,y=True)
-        self.plot.setYRange(-4,4)
+        # 增强网格样式 - 科幻发光效果
+        self.plot.showGrid(x=True, y=True, alpha=0.4)
+        self.plot.getPlotItem().getAxis('left').setPen(pg.mkPen('#60a5fa', width=1.5))
+        self.plot.getPlotItem().getAxis('bottom').setPen(pg.mkPen('#60a5fa', width=1.5))
+        self.plot.getPlotItem().getAxis('left').setTextPen(pg.mkPen('#C9E6FF', width=1))
+        self.plot.getPlotItem().getAxis('bottom').setTextPen(pg.mkPen('#C9E6FF', width=1))
+        self.plot.setYRange(-4, 4)
         self.plot.setMenuEnabled(False)
         self.plot.hideButtons()
-        self.plot.setMouseEnabled(False,False)
-        self.cx = self.plot.plot(pen=pg.mkPen("#3b82f6",width=2))
-        self.cy = self.plot.plot(pen=pg.mkPen("#10b981",width=2))
-        self.cz = self.plot.plot(pen=pg.mkPen("#ef4444",width=2))
+        self.plot.setMouseEnabled(False, False)
+        # 增强曲线样式 - 更粗的线条和发光效果
+        self.cx = self.plot.plot(pen=pg.mkPen("#3b82f6", width=3))
+        self.cy = self.plot.plot(pen=pg.mkPen("#10b981", width=3))
+        self.cz = self.plot.plot(pen=pg.mkPen("#ef4444", width=3))
         plot_layout = QVBoxLayout(plot_box)
         plot_layout.addWidget(self.plot)
-        plot_box.setMinimumHeight(220)
+        plot_box.setMinimumHeight(250)  # 稍微增加高度以适应增强的视觉效果
         main_layout.addWidget(plot_box)
 
         # 日志区域：设置为原来的3倍高度
@@ -617,27 +686,35 @@ class MainWindow(QMainWindow):
         mb.setStyleSheet("""
             QMessageBox {
                 background-color: #0f2047 !important;
-                border: 2px solid #3b82f6 !important;
-                border-radius: 10px !important;
-                box-shadow: 0 0 20px rgba(0, 0, 0, 0.5) !important;
+                border: 3px solid #3b82f6 !important;
+                border-radius: 12px !important;
+                box-shadow: 0 0 25px rgba(59, 130, 246, 0.6) !important;
             }
             QMessageBox QLabel {
                 color: #ffffff !important;
-                font-size: 14px !important;
+                font-size: 15px !important;
+                font-weight: bold !important;
                 background-color: transparent !important;
-                padding: 10px !important;
+                padding: 15px !important;
+                text-shadow: 0 0 10px rgba(255, 255, 255, 0.7) !important;
             }
             QMessageBox QPushButton {
                 background-color: #66b3ff !important;
                 color: #ffffff !important;
-                border: none !important;
-                border-radius: 5px !important;
-                padding: 8px 20px !important;
-                font-size: 13px !important;
-                min-width: 80px !important;
+                border: 2px solid #3b82f6 !important;
+                border-radius: 8px !important;
+                padding: 10px 24px !important;
+                font-size: 14px !important;
+                font-weight: bold !important;
+                min-width: 90px !important;
+                box-shadow: 0 0 15px rgba(102, 179, 255, 0.5) !important;
+                text-shadow: 0 0 8px rgba(255, 255, 255, 0.6) !important;
             }
             QMessageBox QPushButton:hover {
                 background-color: #4da6ff !important;
+                border: 2px solid #60a5fa !important;
+                box-shadow: 0 0 25px rgba(96, 165, 250, 0.7) !important;
+                transform: scale(1.05) !important;
             }
         """)
         mb.show()
