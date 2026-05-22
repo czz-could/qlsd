@@ -131,12 +131,13 @@ class SerialWorker(QThread):
     sig_log  = pyqtSignal(str, bool)
     sig_cmd_result = pyqtSignal(bytes, bool, bytes)
 
-    def __init__(self, port, baud, cmd, dev_id):
+    def __init__(self, port, baud, cmd, dev_id, sample_interval=0.5):
         super().__init__()
         self.port = port
         self.baud = baud
         self.cmd = cmd
         self.dev_id = dev_id
+        self.sample_interval = sample_interval
         self.running = True
         self.ser = None
         self.ser_lock = threading.Lock()
@@ -178,7 +179,7 @@ class SerialWorker(QThread):
 
             except Exception as e:
                 self.sig_log.emit(f"❌ 异常：{str(e)}", True)
-            time.sleep(0.5)
+            time.sleep(self.sample_interval)
 
         if self.ser:
             self.ser.close()
@@ -326,10 +327,18 @@ class MainWindow(QMainWindow):
         self.cb_baud2 = QComboBox()
         self.cb_baud2.addItems(["9600","115200"])
         self.cb_baud2.setCurrentText("115200")
+        self.cb_sample_rate = QComboBox()
+        self.cb_sample_rate.addItems(["1Hz", "5Hz", "10Hz"])
+        self.cb_sample_rate.setCurrentText("1Hz")
+        self.cb_sample_rate.currentTextChanged.connect(self.on_sample_rate_changed)
+        self.sample_rate_tip = QLabel("(更改后需重新连接)")
+        self.sample_rate_tip.setStyleSheet("color: #64748b; font-size: 11px;")
         self.btn_conn2 = QPushButton("连接陀螺仪板")
         self.btn_conn2.clicked.connect(self.toggle_conn_gyro)
         l2.addWidget(QLabel("COM:")); l2.addWidget(self.cb_port2)
         l2.addWidget(QLabel("波特率:")); l2.addWidget(self.cb_baud2)
+        l2.addWidget(QLabel("采样率:")); l2.addWidget(self.cb_sample_rate)
+        l2.addWidget(self.sample_rate_tip)
         l2.addWidget(self.btn_conn2)
         top_layout.addWidget(g2)
         main_layout.addLayout(top_layout)
@@ -366,7 +375,6 @@ class MainWindow(QMainWindow):
             if c>=3: c=0; r+=1
         main_layout.addWidget(strain_box)
 
-        # 气象顺序严格按你要求
         weather_box = QGroupBox("气象环境参数")
         wl = QGridLayout(weather_box)
         self.weather_labels = {}
@@ -482,7 +490,18 @@ class MainWindow(QMainWindow):
         if not self.worker_gyro:
             p = self.cb_port2.currentText()
             b = int(self.cb_baud2.currentText())
-            self.worker_gyro = SerialWorker(p,b,CMD_GYRO,1)
+            # 根据选择的采样率设置间隔时间
+            sample_rate_text = self.cb_sample_rate.currentText()
+            if sample_rate_text == "1Hz":
+                sample_interval = 1.0
+            elif sample_rate_text == "5Hz":
+                sample_interval = 0.2
+            elif sample_rate_text == "10Hz":
+                sample_interval = 0.1
+            else:
+                sample_interval = 0.5  # 默认值
+            
+            self.worker_gyro = SerialWorker(p, b, CMD_GYRO, 1, sample_interval)
             self.worker_gyro.sig_data.connect(self.up_gyro)
             self.worker_gyro.sig_log.connect(self.log)
             self.worker_gyro.start()
@@ -647,6 +666,17 @@ class MainWindow(QMainWindow):
         t = time.strftime("%H:%M:%S")
         color = "#f87171" if err else "#22d3ee"
         self.log_edit.append(f"<span style='color:{color}'>[{t}] {msg}</span>")
+
+    def on_sample_rate_changed(self, text):
+        """当采样率更改时，如果已连接陀螺仪，则自动断开"""
+        if self.worker_gyro is not None:
+            # 自动断开当前连接
+            self.worker_gyro.stop()
+            self.worker_gyro.wait()
+            self.worker_gyro = None
+            self.btn_conn2.setText("连接陀螺仪板")
+            self.btn_conn2.setStyleSheet("")
+            self.log(f"ℹ️ 采样率已更改为{text}，自动断开连接", False)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
