@@ -27,7 +27,6 @@ def check_crc(buf):
         return False
     data_len = len(buf) - 2
     data = buf[:data_len]
-    # 关键修正：Modbus CRC 是 低字节在前，高字节在后
     recv_crc = (buf[data_len + 1] << 8) | buf[data_len]
     calc_crc = crc16_modbus(data)
     return recv_crc == calc_crc
@@ -43,20 +42,22 @@ ALARM_OFF = bytes([0x03,0x06,0x00,0x63,0x00,0x00,0x78,0x36])
 
 # ===================== 全局样式 =====================
 GLOBAL_STYLE = """
-QMainWindow{background-color: #0F172A;}
-QGroupBox{color: #E2E8F0;font-size:14px;font-weight:bold;border:1px solid #334155;border-radius:8px;margin-top:12px;padding-top:15px;}
+QWidget{background-color: #071f3a;}
+QScrollArea{background-color: transparent;}
+QFrame{background-color: transparent;}
+QMainWindow{background-color: #071f3a;}
+QGroupBox{color: #E6F2FF;font-size:14px;font-weight:bold;background-color:#081827;border:1px solid #184e85;border-radius:8px;margin-top:12px;padding-top:15px;}
 QGroupBox::title{subcontrol-origin: margin;left:15px;top:5px;}
-QLabel{color:#CBD5E1;font-size:13px;}
-QPushButton{background-color:#0EA5E9;color:#FFF;border:none;border-radius:6px;padding:8px 20px;font-size:13px;}
-QPushButton:hover{background-color:#0284C7;}
-QPushButton:disabled{background-color:#475569;color:#999;}
-QComboBox{background-color:#1E293B;color:#F1F5F9;border:1px solid #475569;border-radius:6px;padding:6px 10px;}
-QComboBox QAbstractItemView{background-color:#1E293B;color:#F1F5F9;selection-background-color:#0EA5E9;}
-QTextEdit{background-color:#1E293B;color:#22D3EE;font-family:Consolas;font-size:12px;border:1px solid #334155;border-radius:6px;}
-/* 弹窗科幻风格样式 */
+QLabel{color:#C9E6FF;font-size:13px;}
+QPushButton{background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #0EA5E9, stop:1 #0284C7);color:#FFFFFF;border:none;border-radius:6px;padding:8px 20px;font-size:13px;}
+QPushButton:hover{background-color:#0b79b0;}
+QPushButton:disabled{background-color:#143444;color:#6b7f8e;}
+QComboBox{background-color:#042b40;color:#E6F2FF;border:1px solid #184e85;border-radius:6px;padding:6px 10px;}
+QComboBox QAbstractItemView{background-color:#042b40;color:#E6F2FF;selection-background-color:#0EA5E9;}
+QTextEdit{background-color:#022233;color:#BEEAF7;font-family:Consolas;font-size:12px;border:1px solid #184e85;border-radius:6px;}
 QMessageBox{
-    background-color: #0f2047 !important;
-    border: 2px solid #3b82f6 !important;
+    background-color: #071f3a !important;
+    border: 2px solid #0ea5e9 !important;
     border-radius: 10px !important;
 }
 QMessageBox QLabel{
@@ -65,7 +66,7 @@ QMessageBox QLabel{
     background-color: transparent !important;
 }
 QMessageBox QPushButton{
-    background-color: #66b3ff !important;
+    background-color: #0ea5e9 !important;
     color: #ffffff !important;
     border: none !important;
     border-radius: 5px !important;
@@ -74,18 +75,18 @@ QMessageBox QPushButton{
     min-width: 80px !important;
 }
 QMessageBox QPushButton:hover{
-    background-color: #4da6ff !important;
+    background-color: #0a85d6 !important;
 }
 """
 
 DATA_LABEL_STYLE = """
 QLabel{
-    background-color:#1E293B;
-    color:#22D3EE;
+    background-color:#02293c;
+    color:#7FE8FF;
     font-size:15px;
     font-weight:bold;
     padding:6px 4px;
-    border:1px solid #334155;
+    border:1px solid #184e85;
     border-radius:6px;
     min-width:110px;
 }
@@ -93,25 +94,25 @@ QLabel{
 
 GYRO_CLICK_STYLE = """
 QLabel{
-    background-color:#1E293B;
-    color:#22D3EE;
+    background-color:#02293c;
+    color:#7FE8FF;
     font-size:15px;
     font-weight:bold;
     padding:6px 4px;
-    border:1px solid #334155;
+    border:1px solid #184e85;
     border-radius:6px;
 }
-QLabel:hover{background-color:#2a4365;border:1px solid #3b82f6;}
+QLabel:hover{background-color:#0b486b;border:1px solid #60a5fa;}
 """
 
 SELECTED_GYRO_STYLE = """
 QLabel{
-    background-color:#3b82f6;
+    background-color:#1e3a8a;
     color:white;
     font-size:15px;
     font-weight:bold;
     padding:6px 4px;
-    border:1px solid #60a5fa;
+    border:1px solid #3b82f6;
     border-radius:6px;
 }
 """
@@ -158,14 +159,12 @@ class SerialWorker(QThread):
                     self.ser.write(self.cmd)
                     buf = self.ser.read(200)
                 if len(buf) > 0:
-                    # 在通信日志中打印收到的原始字节（十六进制）
                     self.sig_log.emit(f"📥 收到帧: {hex_str(buf)}", False)
 
                 if len(buf) < 8:
                     self.sig_log.emit(f"⚠️ 数据过短，丢弃", True)
                     continue
 
-                # CRC 校验（已修正字节序）
                 if not check_crc(buf):
                     self.sig_log.emit(f"❌ CRC 校验失败 → 数据无效", True)
                     continue
@@ -201,7 +200,6 @@ class SerialWorker(QThread):
         d["free3"]   = decode_int16((buf[off]<<8)|buf[off+1]); off +=2
         d["settle"]  = decode_int16((buf[off]<<8)|buf[off+1]); off +=2
 
-        # 气象顺序：风速 → 风力 → 风向档 → 风向角度 → 湿度 → 温度 → ...
         d["wind_speed"] = ((buf[off]<<8)|buf[off+1])/10.0; off +=2
         d["wind_level"]  = (buf[off]<<8)|buf[off+1]; off +=2
         d["wind_gear"]   = (buf[off]<<8)|buf[off+1]; off +=2
@@ -233,11 +231,6 @@ class SerialWorker(QThread):
             self.ser.write(data)
 
     def send_with_retry(self, data, attempts=5, delay=0.1):
-        """
-        发送并重试：每次写入后读取与发送帧等长的应答，若应答与发送帧完全相同则视为成功。
-        该函数可在任意线程调用；对串口访问使用 ser_lock 保护。
-        最终通过 sig_cmd_result 发回结果（data, bool, resp_bytes）。
-        """
         result = False
         last_resp = b''
         if not (self.ser and self.ser.is_open):
@@ -264,12 +257,10 @@ class SerialWorker(QThread):
 
         if not result:
             self.sig_log.emit(f"❌ 重试{attempts}次均失败: {hex_str(data)}", True)
-
         self.sig_cmd_result.emit(data, result, last_resp)
         return result
 
     def send_with_retry_async(self, data, attempts=5, delay=0.1):
-        """在独立线程中执行 send_with_retry，避免阻塞调用线程（通常是主线程）。"""
         t = threading.Thread(target=self.send_with_retry, args=(data, attempts, delay), daemon=True)
         t.start()
 
@@ -301,9 +292,15 @@ class MainWindow(QMainWindow):
         self.refresh_com_port()
 
     def init_ui(self):
-        central = QWidget()
-        self.setCentralWidget(central)
-        main_layout = QVBoxLayout(central)
+        # 全局滚动布局
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.setCentralWidget(scroll_area)
+
+        main_widget = QWidget()
+        main_layout = QVBoxLayout(main_widget)
         main_layout.setContentsMargins(20,20,20,20)
         main_layout.setSpacing(12)
 
@@ -332,7 +329,7 @@ class MainWindow(QMainWindow):
         self.cb_sample_rate.setCurrentText("1Hz")
         self.cb_sample_rate.currentTextChanged.connect(self.on_sample_rate_changed)
         self.sample_rate_tip = QLabel("(更改后需重新连接)")
-        self.sample_rate_tip.setStyleSheet("color: #64748b; font-size: 11px;")
+        self.sample_rate_tip.setStyleSheet("color: #9ad6ff; font-size: 11px;")
         self.btn_conn2 = QPushButton("连接陀螺仪板")
         self.btn_conn2.clicked.connect(self.toggle_conn_gyro)
         l2.addWidget(QLabel("COM:")); l2.addWidget(self.cb_port2)
@@ -427,9 +424,10 @@ class MainWindow(QMainWindow):
             self.gyro_click_widgets.append(row_list)
         main_layout.addWidget(gyro_box)
 
+        # 曲线图区域：恢复原始大尺寸
         plot_box = QGroupBox("陀螺仪X/Y/Z加速度实时曲线")
         self.plot = pg.PlotWidget()
-        self.plot.setBackground("#1E293B")
+        self.plot.setBackground("#071f3a")
         self.plot.showGrid(x=True,y=True)
         self.plot.setYRange(-4,4)
         self.plot.setMenuEnabled(False)
@@ -440,15 +438,20 @@ class MainWindow(QMainWindow):
         self.cz = self.plot.plot(pen=pg.mkPen("#ef4444",width=2))
         plot_layout = QVBoxLayout(plot_box)
         plot_layout.addWidget(self.plot)
+        plot_box.setMinimumHeight(220)
         main_layout.addWidget(plot_box)
 
+        # 日志区域：设置为原来的3倍高度
         log_box = QGroupBox("通信日志")
         log_lay = QVBoxLayout(log_box)
         self.log_edit = QTextEdit()
         self.log_edit.setReadOnly(True)
+        # 关键：设置日志的最小高度为3倍（原约120 → 360）
+        self.log_edit.setMinimumHeight(360)
         log_lay.addWidget(self.log_edit)
         main_layout.addWidget(log_box)
 
+        scroll_area.setWidget(main_widget)
         self.select_gyro(0)
 
     def select_gyro(self, idx):
@@ -490,7 +493,6 @@ class MainWindow(QMainWindow):
         if not self.worker_gyro:
             p = self.cb_port2.currentText()
             b = int(self.cb_baud2.currentText())
-            # 根据选择的采样率设置间隔时间
             sample_rate_text = self.cb_sample_rate.currentText()
             if sample_rate_text == "1Hz":
                 sample_interval = 1.0
@@ -499,8 +501,7 @@ class MainWindow(QMainWindow):
             elif sample_rate_text == "10Hz":
                 sample_interval = 0.1
             else:
-                sample_interval = 0.5  # 默认值
-            
+                sample_interval = 0.5
             self.worker_gyro = SerialWorker(p, b, CMD_GYRO, 1, sample_interval)
             self.worker_gyro.sig_data.connect(self.up_gyro)
             self.worker_gyro.sig_log.connect(self.log)
@@ -548,7 +549,6 @@ class MainWindow(QMainWindow):
 
     def trigger_alarm(self):
         if self.worker_main:
-            # 发起异步请求，等待 on_cmd_result 处理结果回调
             self.worker_main.send_with_retry_async(ALARM_ON, attempts=5, delay=0.1)
             self.log("⚠️ Z轴突变 > 0.1G → 请求开启声光报警（异步）", True)
 
@@ -559,25 +559,17 @@ class MainWindow(QMainWindow):
 
     def send_motor_on(self):
         if self.worker_main:
-            # 发起异步请求，等待 on_cmd_result 处理结果回调
-            # 暂时禁用启动按钮以防重复点击
             self.btn_motor_start.setEnabled(False)
             self.worker_main.send_with_retry_async(MOTOR_ON, attempts=5, delay=0.1)
             self.log("📤 请求启动振动电机（异步）")
 
     def send_motor_off(self):
         if self.worker_main:
-            # 暂时禁用关闭按钮以防重复点击
             self.btn_motor_stop.setEnabled(False)
             self.worker_main.send_with_retry_async(MOTOR_OFF, attempts=5, delay=0.1)
             self.log("📤 请求关闭振动电机（异步）")
 
     def on_cmd_result(self, data, ok, resp):
-        """
-        处理串口命令异步结果：根据命令和成功/失败状态更新界面或弹窗。
-        使用非模态、主线程显示的对话框以避免阻塞。
-        同时在通信日志打印收到的应答帧（十六进制）。
-        """
         if resp:
             self.log(f"📥 控制应答: {hex_str(resp)}")
         if data == MOTOR_ON:
@@ -616,15 +608,12 @@ class MainWindow(QMainWindow):
                 self.show_alert("控制失败", "声光警报控制失败，请联系管理人员处理")
 
     def show_alert(self, title, text):
-        """在主线程以非模态方式显示错误提示，避免阻塞事件循环。"""
         mb = QMessageBox(self)
         mb.setIcon(QMessageBox.Critical)
         mb.setWindowTitle(title)
         mb.setText(text)
         mb.setStandardButtons(QMessageBox.Ok)
         mb.setModal(False)
-        
-        # 设置弹窗样式符合科幻风格
         mb.setStyleSheet("""
             QMessageBox {
                 background-color: #0f2047 !important;
@@ -651,9 +640,7 @@ class MainWindow(QMainWindow):
                 background-color: #4da6ff !important;
             }
         """)
-        
         mb.show()
-        # 保持引用防止被回收
         self._active_msgboxes.append(mb)
         def _on_finished():
             try:
@@ -668,9 +655,7 @@ class MainWindow(QMainWindow):
         self.log_edit.append(f"<span style='color:{color}'>[{t}] {msg}</span>")
 
     def on_sample_rate_changed(self, text):
-        """当采样率更改时，如果已连接陀螺仪，则自动断开"""
         if self.worker_gyro is not None:
-            # 自动断开当前连接
             self.worker_gyro.stop()
             self.worker_gyro.wait()
             self.worker_gyro = None
