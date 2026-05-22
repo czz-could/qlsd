@@ -1,0 +1,49 @@
+<!-- ... existing code ... -->
+<div class="alert-container">
+    <div class="alert-box">
+        <img src="https://placehold.co/50x50/FF0000/FFFFFF?text=X" alt="Error Icon" class="alert-icon">
+        <div class="alert-message">声光警报控制失败，请联系管理人员处理</div>
+        <button class="alert-button">OK</button>
+    </div>
+</div>
+<!-- ... existing code ... -->
+
+<style>
+.alert-container {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #0f2047 !important; /* 修改：将背景色设置为 #0f2047 */
+    color: #ffffff !important;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+.alert-icon {
+    width: 50px;
+    height: 50px;
+    margin-bottom: 10px;
+}
+
+.alert-message {
+    font-size: 16px;
+    margin-bottom: 20px;
+    color: #ffffff !important;
+}
+
+.alert-button {
+    background-color: #66b3ff !important;
+    color: #ffffff !important;
+    border: none;
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    border-radius: 0; /* 修改：移除按钮圆角 */
+}
+
+.alert-button:hover {
+    background-color: #4da6ff !important;
+}
+</style>

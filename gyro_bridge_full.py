@@ -53,6 +53,29 @@ QPushButton:disabled{background-color:#475569;color:#999;}
 QComboBox{background-color:#1E293B;color:#F1F5F9;border:1px solid #475569;border-radius:6px;padding:6px 10px;}
 QComboBox QAbstractItemView{background-color:#1E293B;color:#F1F5F9;selection-background-color:#0EA5E9;}
 QTextEdit{background-color:#1E293B;color:#22D3EE;font-family:Consolas;font-size:12px;border:1px solid #334155;border-radius:6px;}
+/* 弹窗科幻风格样式 */
+QMessageBox{
+    background-color: #0f2047 !important;
+    border: 2px solid #3b82f6 !important;
+    border-radius: 10px !important;
+}
+QMessageBox QLabel{
+    color: #ffffff !important;
+    font-size: 14px !important;
+    background-color: transparent !important;
+}
+QMessageBox QPushButton{
+    background-color: #66b3ff !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 5px !important;
+    padding: 8px 20px !important;
+    font-size: 13px !important;
+    min-width: 80px !important;
+}
+QMessageBox QPushButton:hover{
+    background-color: #4da6ff !important;
+}
 """
 
 DATA_LABEL_STYLE = """
@@ -266,7 +289,7 @@ class MainWindow(QMainWindow):
         self.alarm_timer.setInterval(10000)
         self.alarm_timer.timeout.connect(self.close_alarm_auto)
         self.alarm_on_flag = False
-        self.last_z = [0.0]*8
+        self.last_z = [None]*8
         self._active_msgboxes = []
 
         self.selected_gyro = 0
@@ -499,7 +522,7 @@ class MainWindow(QMainWindow):
                 buf["ay"].pop(0)
                 buf["az"].pop(0)
 
-            if abs(g['az'] - self.last_z[i]) > 0.1 and not self.alarm_on_flag:
+            if self.last_z[i] is not None and abs(g['az'] - self.last_z[i]) > 0.1 and not self.alarm_on_flag:
                 self.trigger_alarm()
             self.last_z[i] = g['az']
         self.refresh_plot()
@@ -581,6 +604,35 @@ class MainWindow(QMainWindow):
         mb.setText(text)
         mb.setStandardButtons(QMessageBox.Ok)
         mb.setModal(False)
+        
+        # 设置弹窗样式符合科幻风格
+        mb.setStyleSheet("""
+            QMessageBox {
+                background-color: #0f2047 !important;
+                border: 2px solid #3b82f6 !important;
+                border-radius: 10px !important;
+                box-shadow: 0 0 20px rgba(0, 0, 0, 0.5) !important;
+            }
+            QMessageBox QLabel {
+                color: #ffffff !important;
+                font-size: 14px !important;
+                background-color: transparent !important;
+                padding: 10px !important;
+            }
+            QMessageBox QPushButton {
+                background-color: #66b3ff !important;
+                color: #ffffff !important;
+                border: none !important;
+                border-radius: 5px !important;
+                padding: 8px 20px !important;
+                font-size: 13px !important;
+                min-width: 80px !important;
+            }
+            QMessageBox QPushButton:hover {
+                background-color: #4da6ff !important;
+            }
+        """)
+        
         mb.show()
         # 保持引用防止被回收
         self._active_msgboxes.append(mb)
