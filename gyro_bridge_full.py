@@ -545,6 +545,10 @@ class MainWindow(QMainWindow):
     def toggle_conn_main(self):
         if not self.worker_main:
             p = self.cb_port1.currentText()
+            # 检查是否选择了COM口
+            if not p:
+                self.show_alert("连接失败", "未指定任何COM口连接。连接失败")
+                return
             b = int(self.cb_baud1.currentText())
             self.worker_main = SerialWorker(p,b,CMD_MAIN,0)
             self.worker_main.sig_data.connect(self.up_main)
@@ -561,6 +565,10 @@ class MainWindow(QMainWindow):
     def toggle_conn_gyro(self):
         if not self.worker_gyro:
             p = self.cb_port2.currentText()
+            # 检查是否选择了COM口
+            if not p:
+                self.show_alert("连接失败", "未指定任何COM口连接。连接失败")
+                return
             b = int(self.cb_baud2.currentText())
             sample_rate_text = self.cb_sample_rate.currentText()
             if sample_rate_text == "1Hz":
@@ -580,7 +588,7 @@ class MainWindow(QMainWindow):
             self.worker_gyro.stop()
             self.worker_gyro.wait()
             self.worker_gyro = None
-            self.btn_conn2.setText("连接陀螺仪"); self.btn_conn2.setStyleSheet("")
+            self.btn_conn2.setText("连接陀螺仪板"); self.btn_conn2.setStyleSheet("")
 
     def up_main(self, d, idx):
         for k,v in self.strain_labels.items():
