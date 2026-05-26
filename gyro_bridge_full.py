@@ -28,7 +28,7 @@ def load_config():
     default_config = {
         "version_check_url": "",
         "check_on_startup": True,
-        "current_version": "1.2.0"
+        "current_version": "1.3.0"
     }
     
     try:
@@ -54,7 +54,7 @@ def load_config():
 APP_CONFIG = load_config()
 
 # ===================== 版本信息 =====================
-CURRENT_VERSION = APP_CONFIG.get("current_version", "1.2.0")
+CURRENT_VERSION = APP_CONFIG.get("current_version", "1.3.0")
 
 # 远程版本检查URL（从配置文件读取，支持动态更新）
 VERSION_CHECK_URL = APP_CONFIG.get("version_check_url", "") 
@@ -73,7 +73,6 @@ VERSION_HISTORY = [
             "✅ 科幻风格UI界面设计"
         ]
     },
-    # 后续版本更新请在此添加新版本记录
     {
         "version": "1.1.0",
         "date": "2026-05-26",
@@ -82,13 +81,24 @@ VERSION_HISTORY = [
             "✨ 新增了版本管理功能",
         ]
     },
-    # 后续版本更新请在此添加新版本记录
     {
         "version": "1.2.0",
         "date": "2026-05-26",
-        "title": "功能优化",
+        "title": "配置化管理",
         "changes": [
-            "✨ 测试 用户版本更新功能",
+            "✨ 实现了配置文件管理版本检查 URL",
+            "✨ 支持动态更换 Token 无需重新编译",
+            "🐛 修复了已知问题"
+        ]
+    },
+    {
+        "version": "1.3.0",
+        "date": "2026-05-26",
+        "title": "版本更新功能完善",
+        "changes": [
+            "✨ 完善了全自动更新功能",
+            "✨ 优化了用户体验和错误提示",
+            "🐛 修复了已知问题"
         ]
     }    
 ]
