@@ -1,4 +1,14 @@
 import sys
+import os
+
+# ===================== Qt平台插件路径设置（PyInstaller打包必需） =====================
+if getattr(sys, 'frozen', False):
+    # 打包后的情况：设置Qt插件路径
+    qt_plugin_path = os.path.join(sys._MEIPASS, 'PyQt5', 'Qt5', 'plugins')
+    if not os.path.exists(qt_plugin_path):
+        qt_plugin_path = os.path.join(sys._MEIPASS, 'PyQt5', 'Qt', 'plugins')
+    os.environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = qt_plugin_path
+
 import time
 import struct
 import serial
@@ -9,7 +19,35 @@ from PyQt5.QtGui import *
 import pyqtgraph as pg
 import threading
 
-# ===================== CRC16 校验（修正字节序，与Modbus RTU完全一致） =====================
+# ===================== 版本信息 =====================
+CURRENT_VERSION = "1.0.0"
+
+VERSION_HISTORY = [
+    {
+        "version": "1.0.0",
+        "date": "2026-05-26",
+        "title": "初始版本",
+        "changes": [
+            "✅ 基础功能实现：串口通信、数据采集、实时监控",
+            "✅ 支持11路应变片数据采集与显示",
+            "✅ 支持8路陀螺仪数据采集与实时曲线显示",
+            "✅ 气象环境参数监测（风速、温湿度、PM2.5等）",
+            "✅ 电机控制与声光报警功能",
+            "✅ 科幻风格UI界面设计"
+        ]
+    },
+    # 后续版本更新请在此添加新版本记录
+    {
+        "version": "1.1.0",
+        "date": "2026-05-26",
+        "title": "功能优化",
+        "changes": [
+            "✨ 新增了版本管理功能",
+        ]
+    }
+]
+
+# ===================== CRC16 校验（修正字节序,与Modbus RTU完全一致） =====================
 def crc16_modbus(data):
     crc = 0xFFFF
     for b in data:
@@ -367,7 +405,39 @@ class MainWindow(QMainWindow):
         main_layout.setContentsMargins(20,20,20,20)
         main_layout.setSpacing(12)
 
+        # 第一行：只放关于按钮（左上角）
+        about_layout = QHBoxLayout()
+        
+        # 关于按钮 - 小巧版本
+        self.btn_about = QPushButton("关于")
+        self.btn_about.clicked.connect(self.show_about)
+        self.btn_about.setStyleSheet("""
+            QPushButton {
+                background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8b5cf6, stop:1 #7c3aed);
+                color: #ffffff;
+                border: 2px solid #a78bfa;
+                border-radius: 6px;
+                padding: 6px 16px;
+                font-size: 12px;
+                font-weight: bold;
+                box-shadow: 0 0 8px rgba(139, 92, 246, 0.3);
+                text-shadow: 0 0 5px rgba(255, 255, 255, 0.4);
+            }
+            QPushButton:hover {
+                background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #a78bfa, stop:1 #8b5cf6);
+                border: 2px solid #c4b5fd;
+                box-shadow: 0 0 12px rgba(167, 139, 250, 0.5);
+            }
+        """)
+        self.btn_about.setFixedWidth(60)
+        
+        about_layout.addWidget(self.btn_about)
+        about_layout.addStretch()
+        main_layout.addLayout(about_layout)
+        
+        # 第二行：主板和陀螺仪设置（水平布局）
         top_layout = QHBoxLayout()
+        
         g1 = QGroupBox("模型箱主板 地址0x01")
         l1 = QHBoxLayout(g1)
         self.cb_port1 = QComboBox()
@@ -376,8 +446,10 @@ class MainWindow(QMainWindow):
         self.cb_baud1.setCurrentText("115200")
         self.btn_conn1 = QPushButton("连接主板")
         self.btn_conn1.clicked.connect(self.toggle_conn_main)
-        l1.addWidget(QLabel("COM:")); l1.addWidget(self.cb_port1)
-        l1.addWidget(QLabel("波特率:")); l1.addWidget(self.cb_baud1)
+        l1.addWidget(QLabel("COM:"))
+        l1.addWidget(self.cb_port1)
+        l1.addWidget(QLabel("波特率:"))
+        l1.addWidget(self.cb_baud1)
         l1.addWidget(self.btn_conn1)
         top_layout.addWidget(g1)
 
@@ -395,9 +467,12 @@ class MainWindow(QMainWindow):
         self.sample_rate_tip.setStyleSheet("color: #9ad6ff; font-size: 11px;")
         self.btn_conn2 = QPushButton("连接陀螺仪板")
         self.btn_conn2.clicked.connect(self.toggle_conn_gyro)
-        l2.addWidget(QLabel("COM:")); l2.addWidget(self.cb_port2)
-        l2.addWidget(QLabel("波特率:")); l2.addWidget(self.cb_baud2)
-        l2.addWidget(QLabel("采样率:")); l2.addWidget(self.cb_sample_rate)
+        l2.addWidget(QLabel("COM:"))
+        l2.addWidget(self.cb_port2)
+        l2.addWidget(QLabel("波特率:"))
+        l2.addWidget(self.cb_baud2)
+        l2.addWidget(QLabel("采样率:"))
+        l2.addWidget(self.cb_sample_rate)
         l2.addWidget(self.sample_rate_tip)
         l2.addWidget(self.btn_conn2)
         top_layout.addWidget(g2)
@@ -747,6 +822,165 @@ class MainWindow(QMainWindow):
             self.btn_conn2.setText("连接陀螺仪板")
             self.btn_conn2.setStyleSheet("")
             self.log(f"ℹ️ 采样率已更改为{text}，自动断开连接", False)
+
+    def show_about(self):
+        """显示关于对话框，包含版本信息和更新历史"""
+        dialog = QDialog(self)
+        dialog.setWindowTitle("关于 桥梁模型箱 485综合采集上位机")
+        dialog.setModal(True)
+        dialog.resize(650, 550)
+        dialog.setStyleSheet("""
+            QDialog {
+                background-color: #0f2047;
+                border: 3px solid #3b82f6;
+                border-radius: 12px;
+            }
+        """)
+        
+        layout = QVBoxLayout(dialog)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
+        
+        # 标题区域
+        title_label = QLabel("🌉 桥梁模型箱 485综合采集上位机")
+        title_label.setAlignment(Qt.AlignCenter)
+        title_label.setStyleSheet("""
+            font-size: 20px;
+            font-weight: bold;
+            color: #ffffff;
+            text-shadow: 0 0 15px rgba(59, 130, 246, 0.8);
+            padding: 10px;
+        """)
+        layout.addWidget(title_label)
+        
+        # 版本信息
+        version_label = QLabel(f"当前版本: v{CURRENT_VERSION}")
+        version_label.setAlignment(Qt.AlignCenter)
+        version_label.setStyleSheet("""
+            font-size: 16px;
+            font-weight: bold;
+            color: #60a5fa;
+            text-shadow: 0 0 10px rgba(96, 165, 250, 0.6);
+            padding: 5px;
+        """)
+        layout.addWidget(version_label)
+        
+        # 分割线
+        line = QFrame()
+        line.setFrameShape(QFrame.HLine)
+        line.setStyleSheet("background-color: #3b82f6;")
+        layout.addWidget(line)
+        
+        # 更新历史标题
+        history_title = QLabel("📋 版本更新历史")
+        history_title.setStyleSheet("""
+            font-size: 16px;
+            font-weight: bold;
+            color: #ffffff;
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+            padding: 5px;
+        """)
+        layout.addWidget(history_title)
+        
+        # 版本历史滚动区域
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setStyleSheet("""
+            QScrollArea {
+                background-color: #081827;
+                border: 2px solid #1e3a8a;
+                border-radius: 8px;
+            }
+        """)
+        
+        scroll_content = QWidget()
+        scroll_layout = QVBoxLayout(scroll_content)
+        scroll_layout.setContentsMargins(15, 15, 15, 15)
+        scroll_layout.setSpacing(20)
+        
+        # 遍历版本历史
+        for idx, ver_info in enumerate(VERSION_HISTORY):
+            version_card = QWidget()
+            version_card.setStyleSheet("""
+                QWidget {
+                    background-color: #0a1929;
+                    border: 2px solid #1e3a8a;
+                    border-radius: 8px;
+                    padding: 10px;
+                }
+            """)
+            
+            card_layout = QVBoxLayout(version_card)
+            card_layout.setSpacing(8)
+            
+            # 版本号和日期
+            ver_header = QLabel(f"版本 {ver_info['version']}  |  {ver_info['date']}")
+            ver_header.setStyleSheet("""
+                font-size: 15px;
+                font-weight: bold;
+                color: #60a5fa;
+                text-shadow: 0 0 8px rgba(96, 165, 250, 0.5);
+            """)
+            card_layout.addWidget(ver_header)
+            
+            # 更新标题
+            ver_title = QLabel(f"🎯 {ver_info['title']}")
+            ver_title.setStyleSheet("""
+                font-size: 14px;
+                font-weight: bold;
+                color: #ffffff;
+                padding-left: 10px;
+            """)
+            card_layout.addWidget(ver_title)
+            
+            # 更新内容列表
+            changes_text = "\n".join([f"  • {change}" for change in ver_info['changes']])
+            changes_label = QLabel(changes_text)
+            changes_label.setWordWrap(True)
+            changes_label.setStyleSheet("""
+                font-size: 13px;
+                color: #cbd5e1;
+                padding-left: 10px;
+                line-height: 1.5;
+            """)
+            card_layout.addWidget(changes_label)
+            
+            scroll_layout.addWidget(version_card)
+        
+        scroll_layout.addStretch()
+        scroll.setWidget(scroll_content)
+        scroll.setMinimumHeight(250)
+        layout.addWidget(scroll)
+        
+        # 确定按钮
+        btn_ok = QPushButton("确定")
+        btn_ok.clicked.connect(dialog.close)
+        btn_ok.setStyleSheet("""
+            QPushButton {
+                background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #0EA5E9, stop:1 #0284C7);
+                color: #ffffff;
+                border: 2px solid #3b82f6;
+                border-radius: 8px;
+                padding: 10px 40px;
+                font-size: 14px;
+                font-weight: bold;
+                box-shadow: 0 0 12px rgba(14, 165, 233, 0.4);
+                text-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
+            }
+            QPushButton:hover {
+                background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #3b82f6, stop:1 #0b79b0);
+                border: 2px solid #60a5fa;
+                box-shadow: 0 0 20px rgba(96, 165, 250, 0.6);
+            }
+        """)
+        
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+        btn_layout.addWidget(btn_ok)
+        btn_layout.addStretch()
+        layout.addLayout(btn_layout)
+        
+        dialog.exec_()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
