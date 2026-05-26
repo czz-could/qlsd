@@ -22,12 +22,42 @@ from PyQt5.QtGui import *
 import pyqtgraph as pg
 import threading
 
-# ===================== 版本信息 =====================
-CURRENT_VERSION = "1.2.0"
+# ===================== 配置管理 =====================
+def load_config():
+    """加载配置文件，如果不存在或格式错误则返回默认配置"""
+    default_config = {
+        "version_check_url": "",
+        "check_on_startup": True,
+        "current_version": "1.2.0"
+    }
+    
+    try:
+        # 获取正确的配置文件路径
+        config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
+        
+        if os.path.exists(config_path):
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+                print(f"✅ 成功加载配置文件: {config_path}")
+                return config
+        else:
+            print(f"⚠️ 配置文件不存在: {config_path}，使用默认配置")
+            # 创建默认配置文件
+            with open(config_path, 'w', encoding='utf-8') as f:
+                json.dump(default_config, f, indent=2, ensure_ascii=False)
+            return default_config
+    except Exception as e:
+        print(f"❌ 加载配置文件失败: {str(e)}，使用默认配置")
+        return default_config
 
-# 远程版本检查URL（可以放在GitHub、Gitee或你的服务器）
-# 示例格式：https://your-server.com/version_info.json
-VERSION_CHECK_URL = "https://raw.githubusercontent.com/czz-could/qlsd/refs/heads/main/version_info.json?token=GHSAT0AAAAAAD6FJXGWLCVDYYJGK27UASSQ2QVKSCA"  # GitHub Raw 地址
+# 加载配置
+APP_CONFIG = load_config()
+
+# ===================== 版本信息 =====================
+CURRENT_VERSION = APP_CONFIG.get("current_version", "1.2.0")
+
+# 远程版本检查URL（从配置文件读取，支持动态更新）
+VERSION_CHECK_URL = APP_CONFIG.get("version_check_url", "") 
 
 VERSION_HISTORY = [
     {
@@ -494,8 +524,15 @@ class MainWindow(QMainWindow):
         self.init_ui()
         self.refresh_com_port()
         
-        # 延迟1秒后检查更新（等界面加载完成）
-        QTimer.singleShot(1000, self.check_for_updates)
+        # 显示启动信息
+        self.show_startup_info()
+        
+        # 根据配置决定是否在启动时检查更新
+        if APP_CONFIG.get("check_on_startup", True):
+            # 延迟1秒后检查更新（等界面加载完成）
+            QTimer.singleShot(1000, self.check_for_updates)
+        else:
+            self.log("ℹ️ 启动时自动检查更新已禁用", False)
 
     def init_ui(self):
         # 全局滚动布局
@@ -918,6 +955,12 @@ class MainWindow(QMainWindow):
         t = time.strftime("%H:%M:%S")
         color = "#f87171" if err else "#22d3ee"
         self.log_edit.append(f"<span style='color:{color}'>[{t}] {msg}</span>")
+        
+    def show_startup_info(self):
+        """显示启动信息"""
+        url_status = "✅ 已配置" if VERSION_CHECK_URL else "⚠️ 未配置"
+        self.log(f"🚀 程序启动 - 版本: v{CURRENT_VERSION}", False)
+        self.log(f"📡 版本检查: {'启用' if APP_CONFIG.get('check_on_startup', True) else '禁用'} ({url_status})", False)
 
     def on_sample_rate_changed(self, text):
         if self.worker_gyro is not None:
