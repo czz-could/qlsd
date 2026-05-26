@@ -1,5 +1,5 @@
 {
-  "latest_version": "1.1.0",
-  "download_url": "https://github.com/czz-could/qlsd/releases/download/v1.1.0/GyroBridge_v1.1.0.exe",
-  "update_notes": "✨ 新增了版本管理功能\n🐛 修复了已知问题"
+  "latest_version": "1.2.0",
+  "download_url": "你上传到GitHub Release的1.2.0版本的.exe下载链接",
+  "update_notes": "✨ 新增了版本管理功能\n🐛 修复了已知问题\n✨ 优化了系统性能"
 }
