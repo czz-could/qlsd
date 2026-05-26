@@ -1,6 +1,5 @@
 {
   "latest_version": "1.2.0",
-  "download_url": "http://your-server.com/downloads/桥梁模型箱采集上位机.exe",
-  "update_notes": "✨ 新增了版本管理功能\n✨ 支持自动检查更新\n✨ 优化了UI布局"
+  "download_url": "https://github.com/czz-could/qlsd/releases/download/v1.2.0/default.exe",
+  "update_notes": "✨ 新增了配置化管理\n🐛 修复了已知问题"
 }
-

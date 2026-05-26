@@ -1102,7 +1102,7 @@ class MainWindow(QMainWindow):
         btn_layout.addStretch()
         layout.addLayout(btn_layout)
         
-        # 准备下载
+        # 准备下载 - 使用固定的 .exe 文件名
         import tempfile
         self.pending_update_file = os.path.join(tempfile.gettempdir(), f"update_v{version}.exe")
         
@@ -1133,7 +1133,7 @@ class MainWindow(QMainWindow):
         msg = QMessageBox(self)
         msg.setIcon(QMessageBox.Information)
         msg.setWindowTitle("下载完成")
-        msg.setText("更新已下载完成！")
+        msg.setText("✅ 更新已下载完成！")
         msg.setInformativeText("程序将自动关闭并安装更新，安装完成后请重新启动程序。")
         msg.setStandardButtons(QMessageBox.Ok)
         msg.button(QMessageBox.Ok).setText("立即安装")
