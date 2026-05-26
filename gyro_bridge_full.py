@@ -32,8 +32,15 @@ def load_config():
     }
     
     try:
-        # 获取正确的配置文件路径
-        config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
+        # 获取正确的配置文件路径 - 支持 PyInstaller 打包后的情况
+        if getattr(sys, 'frozen', False):
+            # 打包后的情况：使用 sys.executable（程序路径）
+            base_path = os.path.dirname(sys.executable)
+        else:
+            # 开发环境：使用源代码所在目录
+            base_path = os.path.dirname(os.path.abspath(__file__))
+        
+        config_path = os.path.join(base_path, 'config.json')
         
         if os.path.exists(config_path):
             with open(config_path, 'r', encoding='utf-8') as f:
@@ -42,9 +49,15 @@ def load_config():
                 return config
         else:
             print(f"⚠️ 配置文件不存在: {config_path}，使用默认配置")
-            # 创建默认配置文件
-            with open(config_path, 'w', encoding='utf-8') as f:
-                json.dump(default_config, f, indent=2, ensure_ascii=False)
+            # 尝试在程序目录创建默认配置
+            try:
+                if not os.path.exists(base_path):
+                    os.makedirs(base_path)
+                with open(config_path, 'w', encoding='utf-8') as f:
+                    json.dump(default_config, f, indent=2, ensure_ascii=False)
+                print(f"✅ 已创建默认配置文件: {config_path}")
+            except Exception as create_err:
+                print(f"❌ 创建配置文件失败: {create_err}")
             return default_config
     except Exception as e:
         print(f"❌ 加载配置文件失败: {str(e)}，使用默认配置")
@@ -970,7 +983,10 @@ class MainWindow(QMainWindow):
         """显示启动信息"""
         url_status = "✅ 已配置" if VERSION_CHECK_URL else "⚠️ 未配置"
         self.log(f"🚀 程序启动 - 版本: v{CURRENT_VERSION}", False)
+        self.log(f"📁 配置文件路径: {os.path.join(os.path.dirname(sys.executable if getattr(sys, 'frozen', False) else __file__), 'config.json')}", False)
         self.log(f"📡 版本检查: {'启用' if APP_CONFIG.get('check_on_startup', True) else '禁用'} ({url_status})", False)
+        if VERSION_CHECK_URL:
+            self.log(f"🔗 检查 URL: {VERSION_CHECK_URL[:60]}...", False)
 
     def on_sample_rate_changed(self, text):
         if self.worker_gyro is not None:
