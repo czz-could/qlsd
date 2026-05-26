@@ -1,5 +1,5 @@
 {
   "latest_version": "1.2.0",
-  "download_url": "https://github.com/czz-could/qlsd/releases/download/v1.2.0/default.exe",
-  "update_notes": "✨ 新增了配置化管理\n🐛 修复了已知问题"
+  "download_url": "https://github.com/czz-could/qlsd/releases/download/v1.3.0/default.exe",
+  "update_notes": "✨ 完善了全自动更新功能\n🐛 优化了用户体验和错误提示"
 }
