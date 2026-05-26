@@ -1,5 +1,8 @@
 import sys
 import os
+import json
+import urllib.request
+import subprocess
 
 # ===================== Qt平台插件路径设置（PyInstaller打包必需） =====================
 if getattr(sys, 'frozen', False):
@@ -20,7 +23,11 @@ import pyqtgraph as pg
 import threading
 
 # ===================== 版本信息 =====================
-CURRENT_VERSION = "1.0.0"
+CURRENT_VERSION = "1.2.0"
+
+# 远程版本检查URL（可以放在GitHub、Gitee或你的服务器）
+# 示例格式：https://your-server.com/version_info.json
+VERSION_CHECK_URL = "https://raw.githubusercontent.com/czz-could/qlsd/refs/heads/main/version_info.json?token=GHSAT0AAAAAAD6FJXGWLCVDYYJGK27UASSQ2QVKSCA"  # GitHub Raw 地址
 
 VERSION_HISTORY = [
     {
@@ -44,7 +51,16 @@ VERSION_HISTORY = [
         "changes": [
             "✨ 新增了版本管理功能",
         ]
-    }
+    },
+    # 后续版本更新请在此添加新版本记录
+    {
+        "version": "1.2.0",
+        "date": "2026-05-26",
+        "title": "功能优化",
+        "changes": [
+            "✨ 测试 用户版本更新功能",
+        ]
+    }    
 ]
 
 # ===================== CRC16 校验（修正字节序,与Modbus RTU完全一致） =====================
@@ -368,6 +384,88 @@ class SerialWorker(QThread):
     def stop(self):
         self.running = False
 
+# ===================== 自动更新线程 =====================
+class UpdateChecker(QThread):
+    """后台检查版本更新的线程"""
+    update_available = pyqtSignal(str, str, str)  # 新版本号, 更新说明, 下载链接
+    no_update = pyqtSignal()
+    check_error = pyqtSignal(str)
+
+    def __init__(self, current_version, check_url):
+        super().__init__()
+        self.current_version = current_version
+        self.check_url = check_url
+
+    def run(self):
+        if not self.check_url:
+            self.no_update.emit()
+            return
+
+        try:
+            # 下载远程版本信息
+            with urllib.request.urlopen(self.check_url, timeout=5) as response:
+                remote_data = json.loads(response.read().decode('utf-8'))
+            
+            latest_version = remote_data.get('latest_version', '')
+            download_url = remote_data.get('download_url', '')
+            update_notes = remote_data.get('update_notes', '')
+
+            # 比较版本号
+            if self.compare_versions(latest_version, self.current_version) > 0:
+                self.update_available.emit(latest_version, update_notes, download_url)
+            else:
+                self.no_update.emit()
+
+        except Exception as e:
+            self.check_error.emit(f"检查更新失败：{str(e)}")
+
+    def compare_versions(self, v1, v2):
+        """比较版本号，v1 > v2 返回 1，v1 < v2 返回 -1，相等返回 0"""
+        parts1 = [int(x) for x in v1.split('.')]
+        parts2 = [int(x) for x in v2.split('.')]
+        
+        for p1, p2 in zip(parts1, parts2):
+            if p1 > p2:
+                return 1
+            elif p1 < p2:
+                return -1
+        
+        if len(parts1) > len(parts2):
+            return 1
+        elif len(parts1) < len(parts2):
+            return -1
+        
+        return 0
+
+class DownloadWorker(QThread):
+    """后台下载更新的线程"""
+    progress = pyqtSignal(int, int)  # 已下载, 总大小
+    finished = pyqtSignal(str)  # 文件路径
+    error = pyqtSignal(str)
+
+    def __init__(self, url, save_path):
+        super().__init__()
+        self.url = url
+        self.save_path = save_path
+        self.downloading = True
+
+    def run(self):
+        try:
+            def report_progress(block_num, block_size, total_size):
+                if not self.downloading:
+                    raise Exception("下载已取消")
+                downloaded = block_num * block_size
+                self.progress.emit(downloaded, total_size)
+
+            urllib.request.urlretrieve(self.url, self.save_path, report_progress)
+            self.finished.emit(self.save_path)
+
+        except Exception as e:
+            self.error.emit(f"下载失败：{str(e)}")
+
+    def stop(self):
+        self.downloading = False
+
 # ===================== 主窗口 =====================
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -389,8 +487,15 @@ class MainWindow(QMainWindow):
         self.max_points = 100
         self.gyro_data_buffer = [{"ax":[],"ay":[],"az":[]} for _ in range(8)]
 
+        self.update_checker = None
+        self.download_worker = None
+        self.pending_update_file = None
+
         self.init_ui()
         self.refresh_com_port()
+        
+        # 延迟1秒后检查更新（等界面加载完成）
+        QTimer.singleShot(1000, self.check_for_updates)
 
     def init_ui(self):
         # 全局滚动布局
@@ -822,6 +927,243 @@ class MainWindow(QMainWindow):
             self.btn_conn2.setText("连接陀螺仪板")
             self.btn_conn2.setStyleSheet("")
             self.log(f"ℹ️ 采样率已更改为{text}，自动断开连接", False)
+
+    def check_for_updates(self):
+        """检查是否有新版本"""
+        if not VERSION_CHECK_URL:
+            return
+
+        self.update_checker = UpdateChecker(CURRENT_VERSION, VERSION_CHECK_URL)
+        self.update_checker.update_available.connect(self.on_update_available)
+        self.update_checker.no_update.connect(self.on_no_update)
+        self.update_checker.check_error.connect(self.on_check_error)
+        self.update_checker.start()
+
+    def on_update_available(self, version, notes, download_url):
+        """发现新版本"""
+        msg = QMessageBox(self)
+        msg.setIcon(QMessageBox.Information)
+        msg.setWindowTitle("发现新版本")
+        msg.setText(f"发现新版本 v{version}！")
+        msg.setInformativeText(f"当前版本：v{CURRENT_VERSION}\n\n更新说明：\n{notes}")
+        msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        msg.button(QMessageBox.Yes).setText("立即更新")
+        msg.button(QMessageBox.No).setText("稍后再说")
+        msg.setStyleSheet("""
+            QMessageBox {
+                background-color: #0f2047 !important;
+                border: 3px solid #3b82f6 !important;
+                border-radius: 12px !important;
+                box-shadow: 0 0 25px rgba(59, 130, 246, 0.6) !important;
+            }
+            QMessageBox QLabel {
+                color: #ffffff !important;
+                font-size: 14px !important;
+                background-color: transparent !important;
+                padding: 10px !important;
+            }
+            QMessageBox QPushButton {
+                background-color: #66b3ff !important;
+                color: #ffffff !important;
+                border: 2px solid #3b82f6 !important;
+                border-radius: 8px !important;
+                padding: 8px 20px !important;
+                font-size: 13px !important;
+                font-weight: bold !important;
+                min-width: 90px !important;
+            }
+            QMessageBox QPushButton:hover {
+                background-color: #4da6ff !important;
+                border: 2px solid #60a5fa !important;
+            }
+        """)
+        
+        reply = msg.exec_()
+        if reply == QMessageBox.Yes:
+            self.download_update(version, download_url)
+
+    def on_no_update(self):
+        """当前已是最新版本"""
+        pass  # 静默处理，不弹窗
+
+    def on_check_error(self, error_msg):
+        """检查更新出错"""
+        self.log(f"❌ {error_msg}", True)
+
+    def download_update(self, version, download_url):
+        """下载更新"""
+        if not download_url:
+            self.show_alert("更新失败", "未提供下载链接，请联系管理员")
+            return
+
+        # 创建下载进度对话框
+        self.download_dialog = QDialog(self)
+        self.download_dialog.setWindowTitle("正在下载更新")
+        self.download_dialog.setModal(True)
+        self.download_dialog.resize(450, 200)
+        self.download_dialog.setStyleSheet("QDialog { background-color: #0f2047; border: 2px solid #3b82f6; border-radius: 10px; }")
+        
+        layout = QVBoxLayout(self.download_dialog)
+        layout.setContentsMargins(20, 20, 20, 20)
+        
+        # 版本信息
+        version_label = QLabel(f"正在下载 v{version}...")
+        version_label.setStyleSheet("color: #ffffff; font-size: 14px; font-weight: bold;")
+        version_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(version_label)
+        
+        # 进度条
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setStyleSheet("""
+            QProgressBar {
+                background-color: #0a1929;
+                border: 2px solid #1e3a8a;
+                border-radius: 5px;
+                text-align: center;
+                color: #ffffff;
+            }
+            QProgressBar::chunk {
+                background-color: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0EA5E9, stop:1 #3b82f6);
+                border-radius: 3px;
+            }
+        """)
+        self.progress_bar.setValue(0)
+        layout.addWidget(self.progress_bar)
+        
+        # 状态标签
+        self.status_label = QLabel("准备下载...")
+        self.status_label.setStyleSheet("color: #cbd5e1; font-size: 12px;")
+        self.status_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self.status_label)
+        
+        # 取消按钮
+        cancel_btn = QPushButton("取消")
+        cancel_btn.clicked.connect(self.cancel_download)
+        cancel_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #ef4444;
+                color: #ffffff;
+                border: 2px solid #dc2626;
+                border-radius: 6px;
+                padding: 8px 20px;
+                font-size: 13px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #dc2626;
+            }
+        """)
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+        btn_layout.addWidget(cancel_btn)
+        btn_layout.addStretch()
+        layout.addLayout(btn_layout)
+        
+        # 准备下载
+        import tempfile
+        self.pending_update_file = os.path.join(tempfile.gettempdir(), f"update_v{version}.exe")
+        
+        self.download_worker = DownloadWorker(download_url, self.pending_update_file)
+        self.download_worker.progress.connect(self.on_download_progress)
+        self.download_worker.finished.connect(self.on_download_finished)
+        self.download_worker.error.connect(self.on_download_error)
+        self.download_worker.start()
+        
+        self.download_dialog.exec_()
+
+    def on_download_progress(self, downloaded, total):
+        """更新下载进度"""
+        if total > 0:
+            percent = int((downloaded / total) * 100)
+            self.progress_bar.setValue(percent)
+            downloaded_mb = downloaded / (1024 * 1024)
+            total_mb = total / (1024 * 1024)
+            self.status_label.setText(f"已下载：{downloaded_mb:.2f} MB / {total_mb:.2f} MB")
+        else:
+            self.status_label.setText(f"已下载：{downloaded / (1024 * 1024):.2f} MB")
+
+    def on_download_finished(self, file_path):
+        """下载完成"""
+        self.download_dialog.close()
+        
+        # 提示用户安装更新
+        msg = QMessageBox(self)
+        msg.setIcon(QMessageBox.Information)
+        msg.setWindowTitle("下载完成")
+        msg.setText("更新已下载完成！")
+        msg.setInformativeText("程序将自动关闭并安装更新，安装完成后请重新启动程序。")
+        msg.setStandardButtons(QMessageBox.Ok)
+        msg.button(QMessageBox.Ok).setText("立即安装")
+        msg.setStyleSheet("""
+            QMessageBox {
+                background-color: #0f2047 !important;
+                border: 3px solid #10b981 !important;
+                border-radius: 12px !important;
+                box-shadow: 0 0 25px rgba(16, 185, 129, 0.6) !important;
+            }
+            QMessageBox QLabel {
+                color: #ffffff !important;
+                font-size: 14px !important;
+                background-color: transparent !important;
+                padding: 10px !important;
+            }
+            QMessageBox QPushButton {
+                background-color: #10b981 !important;
+                color: #ffffff !important;
+                border: 2px solid #059669 !important;
+                border-radius: 8px !important;
+                padding: 8px 20px !important;
+                font-size: 13px !important;
+                font-weight: bold !important;
+                min-width: 90px !important;
+            }
+            QMessageBox QPushButton:hover {
+                background-color: #059669 !important;
+            }
+        """)
+        
+        if msg.exec_() == QMessageBox.Ok:
+            self.install_update(file_path)
+
+    def on_download_error(self, error_msg):
+        """下载出错"""
+        if hasattr(self, 'download_dialog') and self.download_dialog.isVisible():
+            self.download_dialog.close()
+        self.show_alert("下载失败", error_msg)
+
+    def cancel_download(self):
+        """取消下载"""
+        if self.download_worker:
+            self.download_worker.stop()
+            self.download_dialog.close()
+
+    def install_update(self, update_file):
+        """安装更新"""
+        if not os.path.exists(update_file):
+            self.show_alert("安装失败", "更新文件不存在")
+            return
+
+        try:
+            # 获取当前程序路径
+            current_exe = sys.executable if getattr(sys, 'frozen', False) else sys.argv[0]
+            
+            # 创建批处理脚本
+            bat_file = os.path.join(os.path.dirname(current_exe), "install_update.bat")
+            with open(bat_file, 'w', encoding='gbk') as f:
+                f.write('@echo off\n')
+                f.write('echo 正在安装更新，请稍候...\n')
+                f.write('timeout /t 2 /nobreak >nul\n')
+                f.write(f'copy /y "{update_file}" "{current_exe}"\n')
+                f.write(f'start "" "{current_exe}"\n')
+                f.write('del "%~f0"\n')
+                f.write('exit\n')
+            
+            # 执行批处理脚本并退出当前程序
+            subprocess.Popen(f'cmd /c start "" "{bat_file}"', shell=True)
+            QApplication.instance().quit()
+            
+        except Exception as e:
+            self.show_alert("安装失败", f"更新安装失败：{str(e)}")
 
     def show_about(self):
         """显示关于对话框，包含版本信息和更新历史"""
