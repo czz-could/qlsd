@@ -6,7 +6,6 @@ import subprocess
 
 # ===================== Qt平台插件路径设置（PyInstaller打包必需） =====================
 if getattr(sys, 'frozen', False):
-    # 打包后的情况：设置Qt插件路径
     qt_plugin_path = os.path.join(sys._MEIPASS, 'PyQt5', 'Qt5', 'plugins')
     if not os.path.exists(qt_plugin_path):
         qt_plugin_path = os.path.join(sys._MEIPASS, 'PyQt5', 'Qt', 'plugins')
@@ -24,7 +23,6 @@ import threading
 
 # ===================== 配置管理 =====================
 def load_config():
-    """加载配置文件，如果不存在或格式错误则返回默认配置"""
     default_config = {
         "version_check_url": "https://raw.githubusercontent.com/czz-could/qlsd/refs/heads/main/version_info.json",
         "check_on_startup": True,
@@ -32,12 +30,9 @@ def load_config():
     }
     
     try:
-        # 获取正确的配置文件路径 - 支持 PyInstaller 打包后的情况
         if getattr(sys, 'frozen', False):
-            # 打包后的情况：使用 sys.executable（程序路径）
             base_path = os.path.dirname(sys.executable)
         else:
-            # 开发环境：使用源代码所在目录
             base_path = os.path.dirname(os.path.abspath(__file__))
         
         config_path = os.path.join(base_path, 'config.json')
@@ -48,11 +43,9 @@ def load_config():
                     config = json.load(f)
                     print(f"✅ 成功加载配置文件: {config_path}")
                     
-                    # 验证必要字段，如果为空则使用默认值
                     if not config.get('version_check_url'):
                         print("⚠️ 配置文件中的 version_check_url 为空，使用内置默认值")
                         config['version_check_url'] = default_config['version_check_url']
-                        # 更新配置文件
                         with open(config_path, 'w', encoding='utf-8') as f:
                             json.dump(config, f, indent=2, ensure_ascii=False)
                         print(f"✅ 已自动修复并更新配置文件")
@@ -65,7 +58,6 @@ def load_config():
         else:
             print(f"⚠️ 配置文件不存在: {config_path}，使用默认配置")
         
-        # 尝试在程序目录创建默认配置文件
         try:
             if not os.path.exists(base_path):
                 os.makedirs(base_path)
@@ -80,20 +72,15 @@ def load_config():
         print(f"❌ 加载配置文件失败: {str(e)}，使用默认配置")
         return default_config
 
-# 加载配置
 APP_CONFIG = load_config()
 
 # ===================== 版本信息 =====================
-CURRENT_VERSION = APP_CONFIG.get("current_version", "1.4.0")
-
-# 远程版本检查URL（从配置文件读取，支持动态更新）
+CURRENT_VERSION = APP_CONFIG.get("current_version", "1.5.0")
 VERSION_CHECK_URL = APP_CONFIG.get("version_check_url", "") 
 
-# ===================== 版本信息（硬编码默认值/离线备用） =====================
-# 注意：这是离线模式下的最新版本信息，发布新版本时需同步更新此处
-HARDCODED_LATEST_VERSION = "1.4.0"
-HARDCODED_DOWNLOAD_URL = "https://github.com/czz-could/qlsd/releases/download/v1.4.0/default.exe"
-HARDCODED_UPDATE_NOTES = "✨ 优化程序性能和稳定性\n🐛 修复已知问题"
+HARDCODED_LATEST_VERSION = "1.5.0"
+HARDCODED_DOWNLOAD_URL = "https://github.com/czz-could/qlsd/releases/download/v1.5.0/default.exe"
+HARDCODED_UPDATE_NOTES = "✨ 测试升级"
 
 VERSION_HISTORY = [
     {
@@ -145,10 +132,18 @@ VERSION_HISTORY = [
             "✨ 优化程序性能和稳定性",
             "🐛 修复已知问题"
         ]
-    }    
+    },  
+    {
+        "version": "1.5.0",
+        "date": "2026-05-27",
+        "title": "性能优化版",
+        "changes": [
+            "✨ 测试升级",
+        ]
+    }       
 ]
 
-# ===================== CRC16 校验（修正字节序,与Modbus RTU完全一致） =====================
+# ===================== CRC16 校验 =====================
 def crc16_modbus(data):
     crc = 0xFFFF
     for b in data:
@@ -186,7 +181,6 @@ QScrollArea{background-color: transparent;}
 QFrame{background-color: transparent;}
 QMainWindow{background-color: #071f3a;}
 
-/* 科幻风格GroupBox - 增强边框和发光效果 */
 QGroupBox{
     color: #E6F2FF;
     font-size:14px;
@@ -206,14 +200,12 @@ QGroupBox::title{
     text-shadow: 0 0 10px rgba(96, 165, 250, 0.7);
 }
 
-/* 科幻风格标签 */
 QLabel{
     color:#C9E6FF;
     font-size:13px;
     text-shadow: 0 0 5px rgba(201, 230, 255, 0.5);
 }
 
-/* 科幻游戏风格按钮 - 增强发光和动画效果 */
 QPushButton{
     background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #0EA5E9, stop:1 #0284C7);
     color:#FFFFFF;
@@ -237,7 +229,6 @@ QPushButton:disabled{
     box-shadow: none;
 }
 
-/* 科幻风格下拉框 */
 QComboBox{
     background-color:#042b40;
     color:#E6F2FF;
@@ -255,7 +246,6 @@ QComboBox QAbstractItemView{
     border-radius:8px;
 }
 
-/* 科幻风格文本编辑器 - 终端效果 */
 QTextEdit{
     background-color:#022233;
     color:#BEEAF7;
@@ -265,8 +255,6 @@ QTextEdit{
     border-radius:8px;
     box-shadow: inset 0 0 10px rgba(24, 78, 133, 0.4);
 }
-
-/* 弹窗样式已在show_alert中定义，保持原样 */
 """
 
 DATA_LABEL_STYLE = """
@@ -471,8 +459,7 @@ class SerialWorker(QThread):
 
 # ===================== 自动更新线程 =====================
 class UpdateChecker(QThread):
-    """后台检查版本更新的线程"""
-    update_available = pyqtSignal(str, str, str)  # 新版本号, 更新说明, 下载链接
+    update_available = pyqtSignal(str, str, str)
     no_update = pyqtSignal()
     check_error = pyqtSignal(str)
 
@@ -482,95 +469,42 @@ class UpdateChecker(QThread):
         self.check_url = check_url
 
     def run(self):
-        print(f"🔄 开始检查版本更新...")
-        
-        # 如果没有配置 URL 或 URL 为空，直接使用硬编码的默认值
         if not self.check_url:
-            print("⚠️ 未配置版本检查 URL，使用本地版本信息")
-            self._check_with_hardcoded()
+            self.no_update.emit()
             return
-        
-        print(f"📡 正在请求远程版本信息...")
-        print(f"🔗 URL: {self.check_url[:80]}...")
 
         try:
-            # 创建带 User-Agent 的请求
-            req = urllib.request.Request(
-                self.check_url,
-                headers={
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                    'Accept': 'application/vnd.github.v3+json'
-                }
-            )
-            
-            print("⏳ 正在请求 GitHub API...")
-            # 下载远程版本信息 - 两层超时保护
-            with urllib.request.urlopen(req, timeout=10) as response:
-                print("✅ 连接成功，正在读取数据...")
+            req = urllib.request.Request(self.check_url, headers={
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            })
+            with urllib.request.urlopen(req, timeout=5) as response:
                 remote_data = json.loads(response.read().decode('utf-8'))
-            
+
             latest_version = remote_data.get('latest_version', '')
             download_url = remote_data.get('download_url', '')
             update_notes = remote_data.get('update_notes', '')
 
-            print(f"📊 当前版本: v{self.current_version}, 最新版本: v{latest_version}")
-
-            # 比较版本号
             if self.compare_versions(latest_version, self.current_version) > 0:
-                print(f"✨ 发现新版本: v{latest_version}")
                 self.update_available.emit(latest_version, update_notes, download_url)
             else:
-                print(f"✅ 已是最新版本")
                 self.no_update.emit()
 
         except Exception as e:
-            error_msg = f"网络检查失败：{str(e)}，尝试使用本地版本信息"
-            print(f"❌ {error_msg}")
-            # 网络检查失败，降级到本地硬编码版本信息
-            self._fallback_to_hardcoded()
-
-    def _check_with_hardcoded(self):
-        """使用硬编码的离线版本信息进行检查"""
-        latest_version = HARDCODED_LATEST_VERSION
-        download_url = HARDCODED_DOWNLOAD_URL
-        update_notes = HARDCODED_UPDATE_NOTES
-        
-        print(f"📊 当前版本: v{self.current_version}, 离线最新版本: v{latest_version}")
-
-        if self.compare_versions(latest_version, self.current_version) > 0:
-            print(f"✨ 发现新版本（离线）: v{latest_version}")
-            self.update_available.emit(latest_version, update_notes, download_url)
-        else:
-            print(f"✅ 已是最新版本（离线模式）")
             self.no_update.emit()
 
-    def _fallback_to_hardcoded(self):
-        """ fallback 到硬编码版本信息（当网络请求失败时）"""
-        print("⚠️ 使用 fallback 机制，采用离线版本信息")
-        self._check_with_hardcoded()
-
     def compare_versions(self, v1, v2):
-        """比较版本号，v1 > v2 返回 1，v1 < v2 返回 -1，相等返回 0"""
         parts1 = [int(x) for x in v1.split('.')]
         parts2 = [int(x) for x in v2.split('.')]
-        
         for p1, p2 in zip(parts1, parts2):
             if p1 > p2:
                 return 1
             elif p1 < p2:
                 return -1
-        
-        if len(parts1) > len(parts2):
-            return 1
-        elif len(parts1) < len(parts2):
-            return -1
-        
         return 0
 
 class DownloadWorker(QThread):
-    """后台下载更新的线程"""
-    progress = pyqtSignal(int, int)  # 已下载, 总大小
-    finished = pyqtSignal(str)  # 文件路径
+    progress = pyqtSignal(int, int)
+    finished = pyqtSignal(str)
     error = pyqtSignal(str)
 
     def __init__(self, url, save_path):
@@ -594,7 +528,7 @@ class DownloadWorker(QThread):
             self.error.emit(f"下载失败：{str(e)}")
 
     def stop(self):
-        self.downloading = False
+        self.downloading = True
 
 # ===================== 主窗口 =====================
 class MainWindow(QMainWindow):
@@ -623,19 +557,14 @@ class MainWindow(QMainWindow):
 
         self.init_ui()
         self.refresh_com_port()
-        
-        # 显示启动信息
         self.show_startup_info()
         
-        # 根据配置决定是否在启动时检查更新
         if APP_CONFIG.get("check_on_startup", True):
-            # 延迟1秒后检查更新（等界面加载完成）
             QTimer.singleShot(1000, self.check_for_updates)
         else:
             self.log("ℹ️ 启动时自动检查更新已禁用", False)
 
     def init_ui(self):
-        # 全局滚动布局
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
@@ -647,10 +576,7 @@ class MainWindow(QMainWindow):
         main_layout.setContentsMargins(20,20,20,20)
         main_layout.setSpacing(12)
 
-        # 第一行：只放关于按钮（左上角）
         about_layout = QHBoxLayout()
-        
-        # 关于按钮 - 小巧版本
         self.btn_about = QPushButton("关于")
         self.btn_about.clicked.connect(self.show_about)
         self.btn_about.setStyleSheet("""
@@ -672,14 +598,11 @@ class MainWindow(QMainWindow):
             }
         """)
         self.btn_about.setFixedWidth(60)
-        
         about_layout.addWidget(self.btn_about)
         about_layout.addStretch()
         main_layout.addLayout(about_layout)
-        
-        # 第二行：主板和陀螺仪设置（水平布局）
+
         top_layout = QHBoxLayout()
-        
         g1 = QGroupBox("模型箱主板 地址0x01")
         l1 = QHBoxLayout(g1)
         self.cb_port1 = QComboBox()
@@ -804,11 +727,9 @@ class MainWindow(QMainWindow):
             self.gyro_click_widgets.append(row_list)
         main_layout.addWidget(gyro_box)
 
-        # 曲线图区域：恢复原始大尺寸
         plot_box = QGroupBox("陀螺仪X/Y/Z加速度实时曲线")
         self.plot = pg.PlotWidget()
         self.plot.setBackground("#071f3a")
-        # 增强网格样式 - 科幻发光效果
         self.plot.showGrid(x=True, y=True, alpha=0.4)
         self.plot.getPlotItem().getAxis('left').setPen(pg.mkPen('#60a5fa', width=1.5))
         self.plot.getPlotItem().getAxis('bottom').setPen(pg.mkPen('#60a5fa', width=1.5))
@@ -818,21 +739,18 @@ class MainWindow(QMainWindow):
         self.plot.setMenuEnabled(False)
         self.plot.hideButtons()
         self.plot.setMouseEnabled(False, False)
-        # 增强曲线样式 - 更粗的线条和发光效果
         self.cx = self.plot.plot(pen=pg.mkPen("#3b82f6", width=3))
         self.cy = self.plot.plot(pen=pg.mkPen("#10b981", width=3))
         self.cz = self.plot.plot(pen=pg.mkPen("#ef4444", width=3))
         plot_layout = QVBoxLayout(plot_box)
         plot_layout.addWidget(self.plot)
-        plot_box.setMinimumHeight(250)  # 稍微增加高度以适应增强的视觉效果
+        plot_box.setMinimumHeight(250)
         main_layout.addWidget(plot_box)
 
-        # 日志区域：设置为原来的3倍高度
         log_box = QGroupBox("通信日志")
         log_lay = QVBoxLayout(log_box)
         self.log_edit = QTextEdit()
         self.log_edit.setReadOnly(True)
-        # 关键：设置日志的最小高度为3倍（原约120 → 360）
         self.log_edit.setMinimumHeight(360)
         log_lay.addWidget(self.log_edit)
         main_layout.addWidget(log_box)
@@ -862,7 +780,6 @@ class MainWindow(QMainWindow):
     def toggle_conn_main(self):
         if not self.worker_main:
             p = self.cb_port1.currentText()
-            # 检查是否选择了COM口
             if not p:
                 self.show_alert("连接失败", "未指定任何COM口连接。连接失败")
                 return
@@ -882,7 +799,6 @@ class MainWindow(QMainWindow):
     def toggle_conn_gyro(self):
         if not self.worker_gyro:
             p = self.cb_port2.currentText()
-            # 检查是否选择了COM口
             if not p:
                 self.show_alert("连接失败", "未指定任何COM口连接。连接失败")
                 return
@@ -1057,7 +973,6 @@ class MainWindow(QMainWindow):
         self.log_edit.append(f"<span style='color:{color}'>[{t}] {msg}</span>")
         
     def show_startup_info(self):
-        """显示启动信息"""
         url_status = "✅ 已配置" if VERSION_CHECK_URL else "⚠️ 未配置"
         self.log(f"🚀 程序启动 - 版本: v{CURRENT_VERSION}", False)
         self.log(f"📁 配置文件路径: {os.path.join(os.path.dirname(sys.executable if getattr(sys, 'frozen', False) else __file__), 'config.json')}", False)
@@ -1075,10 +990,8 @@ class MainWindow(QMainWindow):
             self.log(f"ℹ️ 采样率已更改为{text}，自动断开连接", False)
 
     def check_for_updates(self):
-        """检查是否有新版本"""
         if not VERSION_CHECK_URL:
             return
-
         self.update_checker = UpdateChecker(CURRENT_VERSION, VERSION_CHECK_URL)
         self.update_checker.update_available.connect(self.on_update_available)
         self.update_checker.no_update.connect(self.on_no_update)
@@ -1086,7 +999,6 @@ class MainWindow(QMainWindow):
         self.update_checker.start()
 
     def on_update_available(self, version, notes, download_url):
-        """发现新版本"""
         msg = QMessageBox(self)
         msg.setIcon(QMessageBox.Information)
         msg.setWindowTitle("发现新版本")
@@ -1123,26 +1035,21 @@ class MainWindow(QMainWindow):
                 border: 2px solid #60a5fa !important;
             }
         """)
-        
         reply = msg.exec_()
         if reply == QMessageBox.Yes:
             self.download_update(version, download_url)
 
     def on_no_update(self):
-        """当前已是最新版本"""
-        pass  # 静默处理，不弹窗
+        self.log(f"✅ 无需更新版本，当前 v{CURRENT_VERSION} 已是最新")
 
     def on_check_error(self, error_msg):
-        """检查更新出错"""
         self.log(f"❌ {error_msg}", True)
 
     def download_update(self, version, download_url):
-        """下载更新"""
         if not download_url:
             self.show_alert("更新失败", "未提供下载链接，请联系管理员")
             return
 
-        # 创建下载进度对话框
         self.download_dialog = QDialog(self)
         self.download_dialog.setWindowTitle("正在下载更新")
         self.download_dialog.setModal(True)
@@ -1152,13 +1059,11 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout(self.download_dialog)
         layout.setContentsMargins(20, 20, 20, 20)
         
-        # 版本信息
         version_label = QLabel(f"正在下载 v{version}...")
         version_label.setStyleSheet("color: #ffffff; font-size: 14px; font-weight: bold;")
         version_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(version_label)
         
-        # 进度条
         self.progress_bar = QProgressBar()
         self.progress_bar.setStyleSheet("""
             QProgressBar {
@@ -1176,13 +1081,11 @@ class MainWindow(QMainWindow):
         self.progress_bar.setValue(0)
         layout.addWidget(self.progress_bar)
         
-        # 状态标签
         self.status_label = QLabel("准备下载...")
         self.status_label.setStyleSheet("color: #cbd5e1; font-size: 12px;")
         self.status_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.status_label)
         
-        # 取消按钮
         cancel_btn = QPushButton("取消")
         cancel_btn.clicked.connect(self.cancel_download)
         cancel_btn.setStyleSheet("""
@@ -1205,7 +1108,6 @@ class MainWindow(QMainWindow):
         btn_layout.addStretch()
         layout.addLayout(btn_layout)
         
-        # 准备下载 - 使用固定的 .exe 文件名
         import tempfile
         self.pending_update_file = os.path.join(tempfile.gettempdir(), f"update_v{version}.exe")
         
@@ -1218,7 +1120,6 @@ class MainWindow(QMainWindow):
         self.download_dialog.exec_()
 
     def on_download_progress(self, downloaded, total):
-        """更新下载进度"""
         if total > 0:
             percent = int((downloaded / total) * 100)
             self.progress_bar.setValue(percent)
@@ -1229,10 +1130,7 @@ class MainWindow(QMainWindow):
             self.status_label.setText(f"已下载：{downloaded / (1024 * 1024):.2f} MB")
 
     def on_download_finished(self, file_path):
-        """下载完成"""
         self.download_dialog.close()
-        
-        # 提示用户安装更新
         msg = QMessageBox(self)
         msg.setIcon(QMessageBox.Information)
         msg.setWindowTitle("下载完成")
@@ -1267,33 +1165,26 @@ class MainWindow(QMainWindow):
                 background-color: #059669 !important;
             }
         """)
-        
         if msg.exec_() == QMessageBox.Ok:
             self.install_update(file_path)
 
     def on_download_error(self, error_msg):
-        """下载出错"""
         if hasattr(self, 'download_dialog') and self.download_dialog.isVisible():
             self.download_dialog.close()
         self.show_alert("下载失败", error_msg)
 
     def cancel_download(self):
-        """取消下载"""
         if self.download_worker:
             self.download_worker.stop()
             self.download_dialog.close()
 
     def install_update(self, update_file):
-        """安装更新"""
         if not os.path.exists(update_file):
             self.show_alert("安装失败", "更新文件不存在")
             return
 
         try:
-            # 获取当前程序路径
             current_exe = sys.executable if getattr(sys, 'frozen', False) else sys.argv[0]
-            
-            # 创建批处理脚本
             bat_file = os.path.join(os.path.dirname(current_exe), "install_update.bat")
             with open(bat_file, 'w', encoding='gbk') as f:
                 f.write('@echo off\n')
@@ -1304,7 +1195,6 @@ class MainWindow(QMainWindow):
                 f.write('del "%~f0"\n')
                 f.write('exit\n')
             
-            # 执行批处理脚本并退出当前程序
             subprocess.Popen(f'cmd /c start "" "{bat_file}"', shell=True)
             QApplication.instance().quit()
             
@@ -1312,7 +1202,6 @@ class MainWindow(QMainWindow):
             self.show_alert("安装失败", f"更新安装失败：{str(e)}")
 
     def show_about(self):
-        """显示关于对话框，包含版本信息和更新历史"""
         dialog = QDialog(self)
         dialog.setWindowTitle("关于 桥梁模型箱 485综合采集上位机")
         dialog.setModal(True)
@@ -1329,7 +1218,6 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(15)
         
-        # 标题区域
         title_label = QLabel("🌉 桥梁模型箱 485综合采集上位机")
         title_label.setAlignment(Qt.AlignCenter)
         title_label.setStyleSheet("""
@@ -1341,7 +1229,6 @@ class MainWindow(QMainWindow):
         """)
         layout.addWidget(title_label)
         
-        # 版本信息
         version_label = QLabel(f"当前版本: v{CURRENT_VERSION}")
         version_label.setAlignment(Qt.AlignCenter)
         version_label.setStyleSheet("""
@@ -1353,13 +1240,11 @@ class MainWindow(QMainWindow):
         """)
         layout.addWidget(version_label)
         
-        # 分割线
         line = QFrame()
         line.setFrameShape(QFrame.HLine)
         line.setStyleSheet("background-color: #3b82f6;")
         layout.addWidget(line)
         
-        # 更新历史标题
         history_title = QLabel("📋 版本更新历史")
         history_title.setStyleSheet("""
             font-size: 16px;
@@ -1370,7 +1255,6 @@ class MainWindow(QMainWindow):
         """)
         layout.addWidget(history_title)
         
-        # 版本历史滚动区域
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setStyleSheet("""
@@ -1386,7 +1270,6 @@ class MainWindow(QMainWindow):
         scroll_layout.setContentsMargins(15, 15, 15, 15)
         scroll_layout.setSpacing(20)
         
-        # 遍历版本历史
         for idx, ver_info in enumerate(VERSION_HISTORY):
             version_card = QWidget()
             version_card.setStyleSheet("""
@@ -1401,7 +1284,6 @@ class MainWindow(QMainWindow):
             card_layout = QVBoxLayout(version_card)
             card_layout.setSpacing(8)
             
-            # 版本号和日期
             ver_header = QLabel(f"版本 {ver_info['version']}  |  {ver_info['date']}")
             ver_header.setStyleSheet("""
                 font-size: 15px;
@@ -1411,7 +1293,6 @@ class MainWindow(QMainWindow):
             """)
             card_layout.addWidget(ver_header)
             
-            # 更新标题
             ver_title = QLabel(f"🎯 {ver_info['title']}")
             ver_title.setStyleSheet("""
                 font-size: 14px;
@@ -1421,7 +1302,6 @@ class MainWindow(QMainWindow):
             """)
             card_layout.addWidget(ver_title)
             
-            # 更新内容列表
             changes_text = "\n".join([f"  • {change}" for change in ver_info['changes']])
             changes_label = QLabel(changes_text)
             changes_label.setWordWrap(True)
@@ -1440,7 +1320,6 @@ class MainWindow(QMainWindow):
         scroll.setMinimumHeight(250)
         layout.addWidget(scroll)
         
-        # 确定按钮
         btn_ok = QPushButton("确定")
         btn_ok.clicked.connect(dialog.close)
         btn_ok.setStyleSheet("""
