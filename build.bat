@@ -2,37 +2,67 @@
 chcp 65001 >nul
 mode con cols=80 lines=25
 echo ======================================
-echo      自动清理 + 一键打包
+echo      Auto Build Script
 echo ======================================
 echo.
-echo [1/3] 正在删除旧打包文件...
+
+:: ===== Set New Version Number Here =====
+set NEW_VERSION=1.4.0
+:: ========================================
+
+echo [1/5] Cleaning old files...
 rmdir /s /q build 2>nul
 rmdir /s /q dist 2>nul
 del /f /q *.spec 2>nul
-echo ✓ 清理完成
+echo OK.
 echo.
 
-echo [2/3] 开始打包...
-echo 正在调用 PyInstaller，请稍候...
+echo [2/5] Building v%NEW_VERSION% ...
+echo Please wait...
 echo.
-pyinstaller --onefile --windowed ^
-    --name "桥梁模型箱采集上位机" ^
+
+:: Auto-answer 'y' to PyInstaller directory prompt
+echo y | pyinstaller --onedir --windowed ^
+    --name "BridgeMonitor_v%NEW_VERSION%" ^
     --hidden-import PyQt5.sip ^
     --hidden-import pyqtgraph ^
     gyro_bridge_full.py
 
 echo.
 if %ERRORLEVEL% EQU 0 (
-    echo [3/3] ✓ 打包成功！
+    echo [3/5] Build successful!
     echo.
-    echo ======================================
-    echo  📦 程序位置: dist\桥梁模型箱采集上位机.exe
-    echo ======================================
+    echo [4/5] Copying config file...
+    copy /y config.json "dist\BridgeMonitor_v%NEW_VERSION%\config.json" >nul
+    if exist "dist\BridgeMonitor_v%NEW_VERSION%\config.json" (
+        echo OK.
+        echo.
+        echo [5/5] Generating release notes...
+        
+        :: Create release instruction file
+        echo ======================================== > dist\release_note.txt
+        echo   Release Note >> dist\release_note.txt
+        echo ======================================== >> dist\release_note.txt
+        echo. >> dist\release_note.txt
+        echo Version: v%NEW_VERSION% >> dist\release_note.txt
+        echo Output: dist\BridgeMonitor_v%NEW_VERSION%\ >> dist\release_note.txt
+        echo. >> dist\release_note.txt
+        echo Steps: >> dist\release_note.txt
+        echo   1. Compress the folder to .zip >> dist\release_note.txt
+        echo   2. Upload to GitHub Release ^(Tag: v%NEW_VERSION%^)>> dist\release_note.txt
+        echo   3. Update download_url in version_info.json >> dist\release_note.txt
+        echo. >> dist\release_note.txt
+        echo   Tip: Change version number at line 9 in this script >> dist\release_note.txt
+        
+        echo OK: dist\release_note.txt
+        echo.
+        echo ======================================
+        echo   BUILD SUCCESS!
+        echo   Output: dist\BridgeMonitor_v%NEW_VERSION%\
+        echo   Note: dist\release_note.txt
+        echo ======================================
+    ) else (
+        echo ERROR: Config file copy failed!
+        echo    Manual: copy config.json "dist\BridgeMonitor_v%NEW_VERSION%\config.json"
+    )
 ) else (
-    echo.
-    echo ======================================
-    echo  ❌ 打包失败！请检查错误信息
-    echo ======================================
-)
-echo.
-pause

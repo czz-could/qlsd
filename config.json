@@ -1,5 +1,5 @@
 {
-  "version_check_url": "https://raw.githubusercontent.com/czz-could/qlsd/refs/heads/main/version_info.json?token=GHSAT0AAAAAAD6FJXGXZ4IYWCFSK6NEMEM62QVK7CQ",
+  "version_check_url": "https://raw.githubusercontent.com/czz-could/qlsd/refs/heads/main/version_info.json",
   "check_on_startup": true,
-  "current_version": "1.3.0"
+  "current_version": "1.4.0"
 }

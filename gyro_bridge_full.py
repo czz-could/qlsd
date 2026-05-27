@@ -26,7 +26,7 @@ import threading
 def load_config():
     """加载配置文件，如果不存在或格式错误则返回默认配置"""
     default_config = {
-        "version_check_url": "",
+        "version_check_url": "https://raw.githubusercontent.com/czz-could/qlsd/refs/heads/main/version_info.json",
         "check_on_startup": True,
         "current_version": "1.3.0"
     }
@@ -43,22 +43,39 @@ def load_config():
         config_path = os.path.join(base_path, 'config.json')
         
         if os.path.exists(config_path):
-            with open(config_path, 'r', encoding='utf-8') as f:
-                config = json.load(f)
-                print(f"✅ 成功加载配置文件: {config_path}")
-                return config
+            try:
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+                    print(f"✅ 成功加载配置文件: {config_path}")
+                    
+                    # 验证必要字段，如果为空则使用默认值
+                    if not config.get('version_check_url'):
+                        print("⚠️ 配置文件中的 version_check_url 为空，使用内置默认值")
+                        config['version_check_url'] = default_config['version_check_url']
+                        # 更新配置文件
+                        with open(config_path, 'w', encoding='utf-8') as f:
+                            json.dump(config, f, indent=2, ensure_ascii=False)
+                        print(f"✅ 已自动修复并更新配置文件")
+                    
+                    return config
+            except json.JSONDecodeError as je:
+                print(f"❌ 配置文件 JSON 格式错误: {str(je)}，使用默认配置")
+            except Exception as e:
+                print(f"❌ 读取配置文件失败: {str(e)}，使用默认配置")
         else:
             print(f"⚠️ 配置文件不存在: {config_path}，使用默认配置")
-            # 尝试在程序目录创建默认配置
-            try:
-                if not os.path.exists(base_path):
-                    os.makedirs(base_path)
-                with open(config_path, 'w', encoding='utf-8') as f:
-                    json.dump(default_config, f, indent=2, ensure_ascii=False)
-                print(f"✅ 已创建默认配置文件: {config_path}")
-            except Exception as create_err:
-                print(f"❌ 创建配置文件失败: {create_err}")
-            return default_config
+        
+        # 尝试在程序目录创建默认配置文件
+        try:
+            if not os.path.exists(base_path):
+                os.makedirs(base_path)
+            with open(config_path, 'w', encoding='utf-8') as f:
+                json.dump(default_config, f, indent=2, ensure_ascii=False)
+            print(f"✅ 已创建默认配置文件: {config_path}")
+        except Exception as create_err:
+            print(f"⚠️ 创建配置文件失败: {create_err}")
+            
+        return default_config
     except Exception as e:
         print(f"❌ 加载配置文件失败: {str(e)}，使用默认配置")
         return default_config
@@ -67,10 +84,16 @@ def load_config():
 APP_CONFIG = load_config()
 
 # ===================== 版本信息 =====================
-CURRENT_VERSION = APP_CONFIG.get("current_version", "1.3.0")
+CURRENT_VERSION = APP_CONFIG.get("current_version", "1.4.0")
 
 # 远程版本检查URL（从配置文件读取，支持动态更新）
 VERSION_CHECK_URL = APP_CONFIG.get("version_check_url", "") 
+
+# ===================== 版本信息（硬编码默认值/离线备用） =====================
+# 注意：这是离线模式下的最新版本信息，发布新版本时需同步更新此处
+HARDCODED_LATEST_VERSION = "1.4.0"
+HARDCODED_DOWNLOAD_URL = "https://github.com/czz-could/qlsd/releases/download/v1.4.0/default.exe"
+HARDCODED_UPDATE_NOTES = "✨ 优化程序性能和稳定性\n🐛 修复已知问题"
 
 VERSION_HISTORY = [
     {
@@ -106,12 +129,21 @@ VERSION_HISTORY = [
     },
     {
         "version": "1.3.0",
-        "date": "2026-05-26",
-        "title": "版本更新功能完善",
+        "date": "2026-05-27",
+        "title": "全自动更新发布",
         "changes": [
             "✨ 完善了全自动更新功能",
             "✨ 优化了用户体验和错误提示",
             "🐛 修复了已知问题"
+        ]
+    },
+    {
+        "version": "1.4.0",
+        "date": "2026-05-27",
+        "title": "性能优化版",
+        "changes": [
+            "✨ 优化程序性能和稳定性",
+            "🐛 修复已知问题"
         ]
     }    
 ]
@@ -450,27 +482,72 @@ class UpdateChecker(QThread):
         self.check_url = check_url
 
     def run(self):
+        print(f"🔄 开始检查版本更新...")
+        
+        # 如果没有配置 URL 或 URL 为空，直接使用硬编码的默认值
         if not self.check_url:
-            self.no_update.emit()
+            print("⚠️ 未配置版本检查 URL，使用本地版本信息")
+            self._check_with_hardcoded()
             return
+        
+        print(f"📡 正在请求远程版本信息...")
+        print(f"🔗 URL: {self.check_url[:80]}...")
 
         try:
-            # 下载远程版本信息
-            with urllib.request.urlopen(self.check_url, timeout=5) as response:
+            # 创建带 User-Agent 的请求
+            req = urllib.request.Request(
+                self.check_url,
+                headers={
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept': 'application/vnd.github.v3+json'
+                }
+            )
+            
+            print("⏳ 正在请求 GitHub API...")
+            # 下载远程版本信息 - 两层超时保护
+            with urllib.request.urlopen(req, timeout=10) as response:
+                print("✅ 连接成功，正在读取数据...")
                 remote_data = json.loads(response.read().decode('utf-8'))
             
             latest_version = remote_data.get('latest_version', '')
             download_url = remote_data.get('download_url', '')
             update_notes = remote_data.get('update_notes', '')
 
+            print(f"📊 当前版本: v{self.current_version}, 最新版本: v{latest_version}")
+
             # 比较版本号
             if self.compare_versions(latest_version, self.current_version) > 0:
+                print(f"✨ 发现新版本: v{latest_version}")
                 self.update_available.emit(latest_version, update_notes, download_url)
             else:
+                print(f"✅ 已是最新版本")
                 self.no_update.emit()
 
         except Exception as e:
-            self.check_error.emit(f"检查更新失败：{str(e)}")
+            error_msg = f"网络检查失败：{str(e)}，尝试使用本地版本信息"
+            print(f"❌ {error_msg}")
+            # 网络检查失败，降级到本地硬编码版本信息
+            self._fallback_to_hardcoded()
+
+    def _check_with_hardcoded(self):
+        """使用硬编码的离线版本信息进行检查"""
+        latest_version = HARDCODED_LATEST_VERSION
+        download_url = HARDCODED_DOWNLOAD_URL
+        update_notes = HARDCODED_UPDATE_NOTES
+        
+        print(f"📊 当前版本: v{self.current_version}, 离线最新版本: v{latest_version}")
+
+        if self.compare_versions(latest_version, self.current_version) > 0:
+            print(f"✨ 发现新版本（离线）: v{latest_version}")
+            self.update_available.emit(latest_version, update_notes, download_url)
+        else:
+            print(f"✅ 已是最新版本（离线模式）")
+            self.no_update.emit()
+
+    def _fallback_to_hardcoded(self):
+        """ fallback 到硬编码版本信息（当网络请求失败时）"""
+        print("⚠️ 使用 fallback 机制，采用离线版本信息")
+        self._check_with_hardcoded()
 
     def compare_versions(self, v1, v2):
         """比较版本号，v1 > v2 返回 1，v1 < v2 返回 -1，相等返回 0"""
