@@ -26,7 +26,7 @@ def load_config():
     default_config = {
         "version_check_url": "https://raw.githubusercontent.com/czz-could/qlsd/refs/heads/main/version_info.json",
         "check_on_startup": True,
-        "current_version": "1.4.0"
+        "current_version": "1.5.0"
     }
     
     try:
