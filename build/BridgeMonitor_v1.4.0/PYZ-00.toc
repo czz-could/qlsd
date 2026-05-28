@@ -1,4 +1,4 @@
-('E:\\CZZ\\GD_qlsd\\czz\\build\\BridgeMonitor_v1.4.0\\PYZ-00.pyz',
+('E:\\CZZ\\version_test\\czz\\build\\BridgeMonitor_v1.4.0\\PYZ-00.pyz',
  [('PyQt5',
    'D:\\SoftWare\\python3-10-11\\lib\\site-packages\\PyQt5\\__init__.py',
    'PYMODULE'),

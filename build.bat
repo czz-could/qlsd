@@ -22,7 +22,7 @@ echo Please wait...
 echo.
 
 :: Auto-answer 'y' to PyInstaller directory prompt
-echo y | pyinstaller --onedir --windowed ^
+echo y | pyinstaller --onedir ^
     --name "BridgeMonitor_v%NEW_VERSION%" ^
     --hidden-import PyQt5.sip ^
     --hidden-import pyqtgraph ^
