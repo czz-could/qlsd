@@ -6,9 +6,9 @@ echo      Auto Build Script
 echo ======================================
 echo.
 
-:: ===== Set New Version Number Here =====
-set NEW_VERSION=1.4.0
-:: ========================================
+:: ===== 只在这里改版本号！其他地方全自动同步 =====
+set NEW_VERSION=1.6.0
+:: ==================================================
 
 echo [1/5] Cleaning old files...
 rmdir /s /q build 2>nul
@@ -21,8 +21,10 @@ echo [2/5] Building v%NEW_VERSION% ...
 echo Please wait...
 echo.
 
-:: Auto-answer 'y' to PyInstaller directory prompt
-echo y | pyinstaller --onedir ^
+:: 加上 --windowed （-w），关闭控制台黑框
+::build_gui.bat：带 --windowed，给用户用
+::build_debug.bat：不带 --windowed，自己调试用，方便看日志报错
+echo y | pyinstaller --onedir --windowed ^
     --name "BridgeMonitor_v%NEW_VERSION%" ^
     --hidden-import PyQt5.sip ^
     --hidden-import pyqtgraph ^
@@ -39,7 +41,6 @@ if %ERRORLEVEL% EQU 0 (
         echo.
         echo [5/5] Generating release notes...
         
-        :: Create release instruction file
         echo ======================================== > dist\release_note.txt
         echo   Release Note >> dist\release_note.txt
         echo ======================================== >> dist\release_note.txt
@@ -66,3 +67,6 @@ if %ERRORLEVEL% EQU 0 (
         echo    Manual: copy config.json "dist\BridgeMonitor_v%NEW_VERSION%\config.json"
     )
 ) else (
+    echo Build FAILED!
+)
+pause

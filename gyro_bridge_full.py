@@ -80,12 +80,12 @@ APP_CONFIG = load_config()
 # ==========================================
 # 【版本号写死在这里！用户永远改不到！】
 # ==========================================
-CURRENT_VERSION = "1.4.0"
+CURRENT_VERSION = "1.6.0"
 VERSION_CHECK_URL = APP_CONFIG.get("version_check_url", "") 
 
-HARDCODED_LATEST_VERSION = "1.4.0"
-HARDCODED_DOWNLOAD_URL = "https://github.com/czz-could/qlsd/releases/download/v1.4.0/default.exe"
-HARDCODED_UPDATE_NOTES = "优化程序性能和稳定性\n修复已知问题"
+HARDCODED_LATEST_VERSION = "1.6.0"
+HARDCODED_DOWNLOAD_URL = "https://github.com/czz-could/qlsd/releases/download/v1.6.0/default.exe"
+HARDCODED_UPDATE_NOTES = "测试升级"
 
 VERSION_HISTORY = [
     {
@@ -137,7 +137,23 @@ VERSION_HISTORY = [
             "优化程序性能和稳定性",
             "修复已知问题"
         ]
-    }    
+    },    
+    {
+        "version": "1.5.0",
+        "date": "2026-05-27",
+        "title": "性能优化版",
+        "changes": [
+            "测试升级"
+        ]
+    },  
+    {
+        "version": "1.6.0",
+        "date": "2026-05-28",
+        "title": "性能优化版",
+        "changes": [
+            "测试升级"
+        ]
+    }         
 ]
 
 # ===================== CRC16 校验 =====================

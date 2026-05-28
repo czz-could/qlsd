@@ -1,0 +1,13 @@
+======================================== 
+  Release Note 
+======================================== 
+ 
+Version: v1.6.0 
+Output: dist\BridgeMonitor_v1.6.0\ 
+ 
+Steps: 
+  1. Compress the folder to .zip 
+  2. Upload to GitHub Release (Tag: v1.6.0)
+  3. Update download_url in version_info.json 
+ 
+  Tip: Change version number at line 9 in this script 
