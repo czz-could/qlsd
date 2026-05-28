@@ -84,7 +84,7 @@ CURRENT_VERSION = "1.6.0"
 VERSION_CHECK_URL = APP_CONFIG.get("version_check_url", "") 
 
 HARDCODED_LATEST_VERSION = "1.6.0"
-HARDCODED_DOWNLOAD_URL = "https://github.com/czz-could/qlsd/releases/download/v1.6.0/default.exe"
+HARDCODED_DOWNLOAD_URL = "https://github.com/czz-could/qlsd/releases/download/v1.6.0/BridgeMonitor_v1.6.0.exe"
 HARDCODED_UPDATE_NOTES = "测试升级"
 
 VERSION_HISTORY = [
